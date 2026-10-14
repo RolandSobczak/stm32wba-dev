@@ -1,0 +1,87 @@
+import has_designator_prefix
+import has_part_picked
+import is_atomic_part
+
+
+component Antenna_IFA_2G4_package:
+    """Antena 2,4 GHz w laminacie - odwrocone F wg TI AN043 (SWRA117D).
+
+    15,2 x 5,7 mm, VSWR < 2 w calym pasmie ISM przy zrodle 50 om, zysk
+    ok. 4,5 dBi. Zaprojektowana dla klucza USB z CC2511, ale jest to
+    zwykla antena 50-omowa i dziala z dowolnym nadajnikiem 2,4 GHz -
+    u nas z wyjsciem `MLPF-WB55-01E3`.
+
+    **To nie jest element kupowany.** To ksztalt miedzi na warstwie
+    gornej, zapisany jako footprint po to, zeby byl wersjonowany razem
+    z projektem i zeby dalo sie go sprawdzic maszynowo. Nie ma go
+    w BOM-ie (`exclude_from_bom`) ani w pliku rozmieszczenia
+    (`exclude_from_pos_files`).
+
+    Skad wymiary
+    ------------
+    Z Table 1 noty, przepisane co do setnej: L1 3,94 / L2 2,70 / L3 5,00 /
+    L4 2,64 / L5 2,00 / L6 4,90 / W1 0,90 / W2 0,50 / D1 0,50 / D2 0,30 /
+    D3 0,30 / D4 0,50 / D5 1,40 / D6 1,70 mm.
+
+    Topologia odczytana z Figure 3 i **sprawdzona rachunkiem**, bo nota
+    ostrzega, ze "small changes of the antenna dimensions may have large
+    impact on the performance". Dwie sumy musza sie domknac i obie sie
+    domykaja:
+
+        L3  =  W1 + D5 + W2 + D6 + W2  =  0,9 + 1,4 + 0,5 + 1,7 + 0,5 = 5,00
+        szerokosc = D1 + 14,40 + D3 = 15,20       wysokosc = D2 + W2 + L6 = 5,70
+
+    Pierwsza mowi, ze trzy ramiona wiszace pod paskiem L3 (zwieracz, tor
+    zasilania, pierwsze ramie meandra) leza wzgledem siebie dokladnie tak,
+    jak podaja D5 i D6. Druga i trzecia - ze cala struktura ma gabaryt
+    podany w nocie. Gdyby ktorykolwiek odczyt rysunku byl zly, ktoras
+    z tych sum by sie nie zgodzila.
+
+    Dwa pady, bo tak dziala odwrocone F
+    -----------------------------------
+    Antena typu F jest ZWARTA DO MASY. Caly radiator to jeden kawalek
+    miedzi, ktory przy stalym pradzie siedzi na masie przez lewa
+    wiezyczke (szeroka na W1), a zasilanie wchodzi punktowo w druga
+    wiezyczke, kawalek dalej. Dopasowanie bierze sie wlasnie z odleglosci
+    miedzy tymi dwoma punktami.
+
+    W netliscie wygladaloby to na zwarcie GND z torem antenowym, wiec
+    footprint deklaruje `net_tie_pad_groups "1, 2"` - KiCad wie wtedy, ze
+    te dwa pady maja byc polaczone miedzia tej czesci, i DRC tego nie
+    zglasza.
+
+        pad 1  punkt zasilania      -> linia 50 om z `MLPF.OUT`
+        pad 2  radiator + zwieracz  -> **wymaga przelotki do masy**
+
+    Przelotka w padzie 2 nie jest opcja: bez niej antena nie ma zwarcia,
+    czyli nie jest antena F, tylko odstrojonym monopolem.
+
+    Czego pilnowac w layoucie
+    -------------------------
+    * **Strefa bez miedzi na WSZYSTKICH czterech warstwach.** Prostokat
+      15,2 x 5,2 mm, narysowany w footprincie na `Dwgs.User`; prawdziwa
+      strefe zakazu stawia `tools/board_setup.py`, bo ona musi znalezc sie
+      takze na In1 (masa) i In2 (zasilanie), a tych warstw footprint nie
+      zna. Masa ma sie zaczynac dokladnie tam, gdzie konczy sie ta strefa -
+      krawedz plaszczyzny jest czescia anteny, nie jej sasiadem.
+    * Obie wiezyczki wchodza 0,5 mm (D4) W OBSZAR plaszczyzny i tak ma byc:
+      tam laduje przelotka masowa i tam dochodzi tor zasilania.
+    * Antena ma lezec przy krawedzi laminatu, zwrocona na zewnatrz, i nic
+      metalowego nie moze stac w jej strefie ani nad nia.
+
+    Co zostaje do sprawdzenia na pierwszej sztuce
+    ---------------------------------------------
+    Nota mierzyla ta antene na laminacie DWUWARSTWOWYM 1,6 mm. Tutaj
+    laminat tez ma 1,6 mm, ale jest czterowarstwowy i masa biegnie 0,21 mm
+    pod warstwa gorna - tyle, ze pod sama antena jest wycieta, wiec roznica
+    dotyczy glownie pojemnosci brzegowej przy krawedzi strefy. Nie jest to
+    powod do zmiany wymiarow w ciemno; jest to powod, zeby zmierzyc.
+    Kierunek poprawki podaje sama nota: grubszy laminat -> antena krotsza.
+    """
+    trait is_atomic_part<manufacturer="TI AN043", partnumber="IFA-2G4-PCB", footprint="Antenna_IFA_2G4.kicad_mod", symbol="Antenna_IFA_2G4.kicad_sym">
+    trait has_part_picked::by_supplier<supplier_id="lcsc", supplier_partno="IFA-2G4-PCB", manufacturer="TI AN043", partno="IFA-2G4-PCB">
+    trait has_designator_prefix<prefix="AE">
+
+    # pins
+    signal FEED ~ pin 1
+    signal GND ~ pin 2

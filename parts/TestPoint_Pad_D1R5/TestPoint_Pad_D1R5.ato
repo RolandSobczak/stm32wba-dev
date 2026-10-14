@@ -1,0 +1,38 @@
+import has_designator_prefix
+import has_part_picked
+import is_atomic_part
+
+component TestPoint_Pad_D1R5_package:
+    """Punkt pomiarowy: goly pad SMD 1,5 x 1,5 mm.
+
+    Zastapil otwor przewlekany 2,54 mm. Otwor byl wygodny do wpiecia
+    przewodu, ale zajmowal 2,8 x 2,8 mm i przebijal wszystkie warstwy -
+    przy dwunastu punktach rozsianych po plytce to dwanascie dziur
+    w plaszczyznach masy i zasilania, kazda w innym miejscu.
+
+    Pad 1,5 mm wystarcza sondzie z koncowka iglowa, a przy okazji nie
+    kosztuje nic po stronie montazu: nie ma czego lutowac.
+
+    Pad jest KWADRATOWY, nie okragly, i to nie z wyboru: atopile 0.15.8
+    przewraca sie na kazdym padzie `smd circle` z bledem "min() iterable
+    argument is empty" w etapie "Updating PCB". Wersja
+    `TestPoint_Pad_D1.5mm` z biblioteki KiCada jest wlasnie taka.
+    Kwadrat 1,5 x 1,5 mm ma przy tym wiekszy prosto pole niz kolo o tej
+    samej szerokosci, wiec dla sondy jest raczej lepszy niz gorszy.
+
+    Tam, gdzie punkt ma sluzyc jako zworka, zostaja goldpiny - zworki nie
+    da sie zalozyc na pad.
+
+    Footprint i symbol z bibliotek standardowych KiCada, skopiowane do
+    projektu. Czesc kupowana poza JLCPCB (a wlasciwie w ogole nie
+    kupowana - to sam laminat), stad `supplier_partno`, ktore nie zaczyna
+    sie od "C": eksporter pomija ja wtedy w BOM-ie dla JLCPCB. Sam trait
+    `has_part_picked` musi byc, bo bez niego atopile nie nadaje
+    komponentowi oznaczenia.
+    """
+    trait is_atomic_part<manufacturer="Generic", partnumber="TestPoint-Pad-D1.5mm", footprint="TestPoint_Pad_D1R5.kicad_mod", symbol="TestPoint_Pad_D1R5.kicad_sym">
+    trait has_part_picked::by_supplier<supplier_id="lcsc", supplier_partno="TestPoint-Pad-D1.5mm", manufacturer="Generic", partno="TestPoint-Pad-D1.5mm">
+    trait has_designator_prefix<prefix="TP">
+
+    # pins
+    signal p1 ~ pin 1

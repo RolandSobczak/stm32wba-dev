@@ -1,0 +1,138 @@
+(footprint "cjiang_FXL0420_1R5_M:IND-SMD_L4.4-W4.2"
+	(version 20241229)
+	(generator "faebryk_convert")
+	(generator_version "v5")
+	(layer "F.Cu")
+	(tedit "5DC5F6A4")
+	(uuid "5e1a19d2-745e-463e-868c-164da77814ba")
+	(property "Reference" "REF**"
+		(at 0 -4)
+		(layer "F.SilkS")
+		(uuid "ec4884fe-a229-481a-b812-10b3e36fe6b8")
+		(effects
+			(font
+				(size 1 1)
+				(thickness 0.15)
+			)
+		)
+	)
+	(property "Value" "IND-SMD_L4.4-W4.2"
+		(at 0 4)
+		(layer "F.Fab")
+		(uuid "4be8b245-d555-42f4-8ff5-d6ceca94590d")
+		(effects
+			(font
+				(size 1 1)
+				(thickness 0.15)
+			)
+		)
+	)
+	(attr smd)
+	(fp_circle
+		(center 2.2 -2.1)
+		(end 2.23 -2.1)
+		(stroke
+			(width 0.06)
+			(type solid)
+		)
+		(layer "F.Fab")
+		(locked no)
+		(uuid "72355cb5-b97d-460e-94c6-837fb7c756eb")
+	)
+	(fp_line
+		(start -2.28 -1.21)
+		(end -2.28 -2.18)
+		(stroke
+			(width 0.15)
+			(type solid)
+		)
+		(layer "F.SilkS")
+		(layers "F.SilkS")
+		(locked no)
+		(uuid "98b2d243-373f-4b8f-be5b-e5f4da007cf8")
+	)
+	(fp_line
+		(start -2.28 -2.18)
+		(end 2.28 -2.18)
+		(stroke
+			(width 0.15)
+			(type solid)
+		)
+		(layer "F.SilkS")
+		(layers "F.SilkS")
+		(locked no)
+		(uuid "36c10d3c-2234-4fcd-8f08-19c44ea97ee1")
+	)
+	(fp_line
+		(start 2.28 -2.18)
+		(end 2.28 -1.21)
+		(stroke
+			(width 0.15)
+			(type solid)
+		)
+		(layer "F.SilkS")
+		(layers "F.SilkS")
+		(locked no)
+		(uuid "c0554835-2fba-4fd6-9b54-b9b5cb850e73")
+	)
+	(fp_line
+		(start -2.28 1.21)
+		(end -2.28 2.18)
+		(stroke
+			(width 0.15)
+			(type solid)
+		)
+		(layer "F.SilkS")
+		(layers "F.SilkS")
+		(locked no)
+		(uuid "00cbcb67-aeac-404e-a77a-91f84436926c")
+	)
+	(fp_line
+		(start -2.28 2.18)
+		(end 2.28 2.18)
+		(stroke
+			(width 0.15)
+			(type solid)
+		)
+		(layer "F.SilkS")
+		(layers "F.SilkS")
+		(locked no)
+		(uuid "c056b2ad-a3aa-4d66-a6cf-6b3ac0a86dbf")
+	)
+	(fp_line
+		(start 2.28 2.18)
+		(end 2.28 1.21)
+		(stroke
+			(width 0.15)
+			(type solid)
+		)
+		(layer "F.SilkS")
+		(layers "F.SilkS")
+		(locked no)
+		(uuid "5c220c6e-e56c-45f2-969b-92f0e570f250")
+	)
+	(pad "1" smd rect
+		(at 2.03 0 0)
+		(size 1.4 2.12)
+		(layers "F.Cu" "F.Paste" "F.Mask")
+		(uuid "fe4dee6a-4b6e-46e3-b52d-30fec7013e98")
+	)
+	(pad "2" smd rect
+		(at -2.03 0 0)
+		(size 1.4 2.12)
+		(layers "F.Cu" "F.Paste" "F.Mask")
+		(uuid "28a33bc4-a2cc-446c-a6b7-c642e59b1325")
+	)
+	(model "${KIPRJMOD}/../../parts/cjiang_FXL0420_1R5_M/IND-SMD_L4.2-W4.4-H2.0.step"
+		(offset
+			(xyz 0 0 -0)
+		)
+		(scale
+			(xyz 1 1 1)
+		)
+		(rotate
+			(xyz 0 0 0)
+		)
+	)
+	(embedded_fonts no)
+)

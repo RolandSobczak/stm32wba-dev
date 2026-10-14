@@ -1,0 +1,17 @@
+import has_designator_prefix
+import has_part_picked
+import is_atomic_part
+import is_auto_generated
+
+component cjiang_SPM2512_1R0MA_package:
+    # This trait marks this file as auto-generated
+    # If you want to manually change it, remove the trait
+    trait is_auto_generated<system="ato_part", source="easyeda:C7471163", date="2026-10-02T11:50:52.035550+00:00", checksum="f9b37e724566cff5aff52d0770ab26799b474be4d7f5e16dc2d985ed60a86d25">
+
+    trait is_atomic_part<manufacturer="cjiang", partnumber="SPM2512-1R0MA", footprint="IND-SMD_L2.5-W2.0.kicad_mod", symbol="SPM2512-1R0MA.kicad_sym", model="IND-SMD_L2.5-W2.0-H1.2.step">
+    trait has_part_picked::by_supplier<supplier_id="lcsc", supplier_partno="C7471163", manufacturer="cjiang", partno="SPM2512-1R0MA">
+    trait has_designator_prefix<prefix="U">
+
+    # pins
+    pin 2
+    pin 1

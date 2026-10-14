@@ -1,0 +1,17 @@
+import has_designator_prefix
+import has_part_picked
+import is_atomic_part
+import is_auto_generated
+
+component Abracon_LLC_ABS07_32_768KHZ_9_T_package:
+    # This trait marks this file as auto-generated
+    # If you want to manually change it, remove the trait
+    trait is_auto_generated<system="ato_part", source="easyeda:C179635", date="2026-08-22T10:35:41.340004+00:00", checksum="2198592bebd6b965c837d4b8aa547e8001551f13fe57b061ea505dc30d474ccc">
+
+    trait is_atomic_part<manufacturer="Abracon LLC", partnumber="ABS07-32.768KHZ-9-T", footprint="CRYSTAL-SMD_L3.2-W1.5-1.kicad_mod", symbol="ABS07-32.768KHZ-9-T.kicad_sym", model="CRYSTAL-SMD_L3.2-W1.5-1.step">
+    trait has_part_picked::by_supplier<supplier_id="lcsc", supplier_partno="C179635", manufacturer="Abracon LLC", partno="ABS07-32.768KHZ-9-T">
+    trait has_designator_prefix<prefix="X">
+
+    # pins
+    signal OSC1 ~ pin 1
+    signal OSC2 ~ pin 2

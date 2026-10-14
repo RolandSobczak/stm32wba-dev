@@ -1,0 +1,21 @@
+import has_designator_prefix
+import has_part_picked
+import is_atomic_part
+import is_auto_generated
+
+component STMicroelectronics_MLPF_WB55_01E3_package:
+    # This trait marks this file as auto-generated
+    # If you want to manually change it, remove the trait
+    trait is_auto_generated<system="ato_part", source="easyeda:C2651048", date="2026-10-01T22:07:17.720049+00:00", checksum="57ea1c5cdc1a2c8fb1a8fd768b2b4ad260fc3cade7d5fcc0a21ce192e727c06d">
+
+    trait is_atomic_part<manufacturer="STMicroelectronics", partnumber="MLPF-WB55-01E3", footprint="FILTER-SMD_6P-L1.6-W1.0-P0.50-BL.kicad_mod", symbol="MLPF-WB55-01E3.kicad_sym", model="FILTER-SMD_6P-L1.6-W1.0-P0.50-BL.step">
+    trait has_part_picked::by_supplier<supplier_id="lcsc", supplier_partno="C2651048", manufacturer="STMicroelectronics", partno="MLPF-WB55-01E3">
+    trait has_designator_prefix<prefix="FL">
+
+    # pins
+    signal GND1 ~ pin 4
+    signal GND2 ~ pin 5
+    signal GND3 ~ pin 6
+    signal GND4 ~ pin 2
+    signal IN ~ pin 3
+    signal OUT ~ pin 1

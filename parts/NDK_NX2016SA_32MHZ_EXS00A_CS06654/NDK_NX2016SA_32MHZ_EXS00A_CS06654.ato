@@ -1,0 +1,38 @@
+import has_designator_prefix
+import has_part_picked
+import is_atomic_part
+import is_auto_generated
+
+component NDK_NX2016SA_32MHZ_EXS00A_CS06654_package:
+    """NDK NX2016SA 32 MHz, C_L = 8 pF, +/-10 ppm, ESR <= 60 Ohm, 2,0 x 1,6 mm.
+
+    To **dokladnie** ten kwarc, ktory ST podaje w karcie katalogowej
+    STM32WB55 (DS11929, Table 5, przypis 1: "e.g. NDK reference: NX2016SA
+    32 MHz EXS00A-CS06654"). Nie zamiennik o tych samych danych - ta sama
+    czesc. Przy radiu, ktorego tolerancja czestotliwosci jest warunkiem
+    zgodnosci z Bluetooth, nie ma powodu szukac wlasnej drogi.
+
+    Rownowazne kwarce 3225 z magazynu (np. YXC X322532MMB4SI, C113671) maja
+    C_L = 10 pF albo 12 pF. Dzialalyby, ale zjadaja czesc zakresu
+    wewnetrznej banki kondensatorow (XOTUNE, 6 bitow, +/-40 ppm), czyli
+    zapas na strojenie po pomiarze.
+
+    Pinologia wygenerowana z EasyEDA zostawila wyprowadzenia 1 i 3 bez nazw.
+    Dostaly je tutaj (`OSC1` / `OSC2`), zeby schemat wygladal jak ten
+    z `parts/Abracon_LLC_ABS07_32_768KHZ_9_T` - inaczej `mcu.ato` lapie
+    kwarc za numery nozek, a numery nozek niczego nie mowia o tym, co jest
+    wejsciem, a co wyjsciem oscylatora. Wyprowadzenia 2 i 4 to obudowa.
+    """
+    # This trait marks this file as auto-generated
+    # If you want to manually change it, remove the trait
+    trait is_auto_generated<system="ato_part", source="easyeda:C5441424", date="2026-10-01T22:07:22.789645+00:00", checksum="b675867731a3a1241974027430b07baea62de603f8f3bf96fec3a1253d8ae77c">
+
+    trait is_atomic_part<manufacturer="NDK", partnumber="NX2016SA-32MHZ-EXS00A-CS06654", footprint="CRYSTAL-SMD_4P-L2.0-W1.6-BL.kicad_mod", symbol="NX2016SA-32MHZ-EXS00A-CS06654.kicad_sym", model="CRYSTAL-SMD_4P-L2.0-W1.6-BL.STEP">
+    trait has_part_picked::by_supplier<supplier_id="lcsc", supplier_partno="C5441424", manufacturer="NDK", partno="NX2016SA-32MHZ-EXS00A-CS06654">
+    trait has_designator_prefix<prefix="X">
+
+    # pins
+    signal GND ~ pin 4
+    GND ~ pin 2        # obudowa kwarcu
+    signal OSC1 ~ pin 1
+    signal OSC2 ~ pin 3

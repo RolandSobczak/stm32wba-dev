@@ -1,0 +1,19 @@
+import has_designator_prefix
+import has_part_picked
+import is_atomic_part
+import is_auto_generated
+
+component Murata_Electronics_LQG15HS10NJ02D_package:
+    """10nH ±5%"""
+
+    # This trait marks this file as auto-generated
+    # If you want to manually change it, remove the trait
+    trait is_auto_generated<system="ato_part", source="easyeda:C77103", date="2026-10-02T11:50:51.466406+00:00", checksum="114e97af25c121f60f42f9be21dab8c287efe87db407dad1fe6782ce56ad7dde">
+
+    trait is_atomic_part<manufacturer="Murata Electronics", partnumber="LQG15HS10NJ02D", footprint="L0402-RD.kicad_mod", symbol="LQG15HS10NJ02D.kicad_sym", model="L0402-RD.step">
+    trait has_part_picked::by_supplier<supplier_id="lcsc", supplier_partno="C77103", manufacturer="Murata Electronics", partno="LQG15HS10NJ02D">
+    trait has_designator_prefix<prefix="L">
+
+    # pins
+    pin 2
+    pin 1

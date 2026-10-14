@@ -1,0 +1,161 @@
+(footprint "NDK_NX2016SA_32MHZ_EXS00A_CS06654:CRYSTAL-SMD_4P-L2.0-W1.6-BL"
+	(version 20241229)
+	(generator "faebryk_convert")
+	(generator_version "v5")
+	(layer "F.Cu")
+	(tedit "5DC5F6A4")
+	(uuid "e83e68a1-beed-417d-8afe-57265ccb5811")
+	(property "Reference" "REF**"
+		(at 0 -4.55)
+		(layer "F.SilkS")
+		(uuid "c683e9c7-c13d-4aa4-b101-3da48bf603af")
+		(effects
+			(font
+				(size 1 1)
+				(thickness 0.15)
+			)
+		)
+	)
+	(property "Value" "CRYSTAL-SMD_4P-L2.0-W1.6-BL"
+		(at 0 4.55)
+		(layer "F.Fab")
+		(uuid "758838b4-7444-4437-a36c-52274faf0a97")
+		(effects
+			(font
+				(size 1 1)
+				(thickness 0.15)
+			)
+		)
+	)
+	(attr through_hole)
+	(fp_circle
+		(center -1 0.8)
+		(end -0.97 0.8)
+		(stroke
+			(width 0.06)
+			(type solid)
+		)
+		(layer "F.Fab")
+		(locked no)
+		(uuid "b57f9208-3511-43be-bdb7-822f41ba2224")
+	)
+	(fp_circle
+		(center -1.14 0.89)
+		(end -1.01 0.89)
+		(stroke
+			(width 0.25)
+			(type solid)
+		)
+		(layer "Cmts.User")
+		(locked no)
+		(uuid "f736754b-7a92-496d-891c-bca148996751")
+	)
+	(fp_line
+		(start -1.65 0.15)
+		(end -1.65 1.45)
+		(stroke
+			(width 0.15)
+			(type solid)
+		)
+		(layer "F.SilkS")
+		(layers "F.SilkS")
+		(locked no)
+		(uuid "9dc284c1-8955-4585-83a0-f2e8e2037397")
+	)
+	(fp_line
+		(start -1.65 1.45)
+		(end -0.25 1.45)
+		(stroke
+			(width 0.15)
+			(type solid)
+		)
+		(layer "F.SilkS")
+		(layers "F.SilkS")
+		(locked no)
+		(uuid "37a85c5a-add2-4ace-9eef-b1c55684aa04")
+	)
+	(fp_line
+		(start -1.35 -1.15)
+		(end 1.35 -1.15)
+		(stroke
+			(width 3)
+			(type solid)
+		)
+		(layer "F.Fab")
+		(layers "F.Fab")
+		(locked no)
+		(uuid "155880a8-6071-48ee-b92d-a1ae41892480")
+	)
+	(fp_line
+		(start 1.35 -1.15)
+		(end 1.35 1.15)
+		(stroke
+			(width 3)
+			(type solid)
+		)
+		(layer "F.Fab")
+		(layers "F.Fab")
+		(locked no)
+		(uuid "0747f8f7-8fc3-4860-8082-9e0d28984c19")
+	)
+	(fp_line
+		(start 1.35 1.15)
+		(end -1.35 1.15)
+		(stroke
+			(width 3)
+			(type solid)
+		)
+		(layer "F.Fab")
+		(layers "F.Fab")
+		(locked no)
+		(uuid "c639d359-0752-46ef-b0a6-42335dfcf601")
+	)
+	(fp_line
+		(start -1.35 -1.15)
+		(end -1.35 -1.15)
+		(stroke
+			(width 3)
+			(type solid)
+		)
+		(layer "F.Fab")
+		(layers "F.Fab")
+		(locked no)
+		(uuid "dbe2bbea-38f8-40c8-accc-921634c81ed1")
+	)
+	(pad "2" smd rect
+		(at 0.7 0.55 0)
+		(size 0.9 0.8)
+		(layers "F.Cu" "F.Paste" "F.Mask")
+		(uuid "b3c5c5ad-184f-4b80-b512-f2e43cf8b63e")
+	)
+	(pad "3" smd rect
+		(at 0.7 -0.55 0)
+		(size 0.9 0.8)
+		(layers "F.Cu" "F.Paste" "F.Mask")
+		(uuid "370539dd-6c4f-48c1-8220-9744826b5d12")
+	)
+	(pad "4" smd rect
+		(at -0.7 -0.55 0)
+		(size 0.9 0.8)
+		(layers "F.Cu" "F.Paste" "F.Mask")
+		(uuid "095b96d0-467e-40d1-97e7-2cb5f24afff0")
+	)
+	(pad "1" smd rect
+		(at -0.7 0.55 0)
+		(size 0.9 0.8)
+		(layers "F.Cu" "F.Paste" "F.Mask")
+		(uuid "d691c434-7d5e-4360-99b7-bd8317efbd98")
+	)
+	(model "${KIPRJMOD}/../../parts/NDK_NX2016SA_32MHZ_EXS00A_CS06654/CRYSTAL-SMD_4P-L2.0-W1.6-BL.STEP"
+		(offset
+			(xyz 0 -0 0)
+		)
+		(scale
+			(xyz 1 1 1)
+		)
+		(rotate
+			(xyz 0 0 0)
+		)
+	)
+	(embedded_fonts no)
+)

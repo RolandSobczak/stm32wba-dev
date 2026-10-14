@@ -1,0 +1,114 @@
+(footprint "Abracon_LLC_ABS07_32_768KHZ_9_T:CRYSTAL-SMD_L3.2-W1.5-1"
+	(version 20241229)
+	(generator "faebryk_convert")
+	(generator_version "v5")
+	(layer "F.Cu")
+	(tedit "5DC5F6A4")
+	(uuid "55d7624b-9bad-4145-a227-ab4f22d53ec9")
+	(property "Reference" "REF**"
+		(at 0 -4)
+		(layer "F.SilkS")
+		(uuid "6474f67d-d42c-4c4e-9fff-4944faeb301f")
+		(effects
+			(font
+				(size 1 1)
+				(thickness 0.15)
+			)
+		)
+	)
+	(property "Value" "CRYSTAL-SMD_L3.2-W1.5-1"
+		(at 0 4)
+		(layer "F.Fab")
+		(uuid "5efde20b-e2e8-429f-8b32-758c626943bd")
+		(effects
+			(font
+				(size 1 1)
+				(thickness 0.15)
+			)
+		)
+	)
+	(attr smd)
+	(fp_circle
+		(center -1.6 0.75)
+		(end -1.57 0.75)
+		(stroke
+			(width 0.06)
+			(type solid)
+		)
+		(layer "F.Fab")
+		(locked no)
+		(uuid "f200204e-d113-43e7-92a1-9e831120c312")
+	)
+	(fp_line
+		(start -2.03 1.07)
+		(end -2.03 -1.08)
+		(stroke
+			(width 0.15)
+			(type solid)
+		)
+		(layer "F.SilkS")
+		(layers "F.SilkS")
+		(locked no)
+		(uuid "36b52622-8be8-4eea-a7d6-3d791720b1aa")
+	)
+	(fp_line
+		(start -2.03 -1.08)
+		(end 2.02 -1.08)
+		(stroke
+			(width 0.15)
+			(type solid)
+		)
+		(layer "F.SilkS")
+		(layers "F.SilkS")
+		(locked no)
+		(uuid "95bb5f39-60a9-478a-9f6f-eaaf2a26cb46")
+	)
+	(fp_line
+		(start 2.02 -1.08)
+		(end 2.02 1.07)
+		(stroke
+			(width 0.15)
+			(type solid)
+		)
+		(layer "F.SilkS")
+		(layers "F.SilkS")
+		(locked no)
+		(uuid "c46b2558-f338-48a3-b208-05774383f3ab")
+	)
+	(fp_line
+		(start 2.02 1.07)
+		(end -2.03 1.07)
+		(stroke
+			(width 0.15)
+			(type solid)
+		)
+		(layer "F.SilkS")
+		(layers "F.SilkS")
+		(locked no)
+		(uuid "043587f2-46ab-4989-82fd-43f6b689bc4c")
+	)
+	(pad "2" smd rect
+		(at 1.27 0 0)
+		(size 1.05 1.7)
+		(layers "F.Cu" "F.Paste" "F.Mask")
+		(uuid "067e28fb-cd1b-4a59-b855-bfc38935dd90")
+	)
+	(pad "1" smd rect
+		(at -1.27 0 0)
+		(size 1.05 1.7)
+		(layers "F.Cu" "F.Paste" "F.Mask")
+		(uuid "de33c1e8-246f-443f-b63f-e294703661c8")
+	)
+	(model "${KIPRJMOD}/../../parts/Abracon_LLC_ABS07_32_768KHZ_9_T/CRYSTAL-SMD_L3.2-W1.5-1.step"
+		(offset
+			(xyz 0 0 -0)
+		)
+		(scale
+			(xyz 1 1 1)
+		)
+		(rotate
+			(xyz 0 0 0)
+		)
+	)
+	(embedded_fonts no)
+)

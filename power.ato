@@ -1,0 +1,890 @@
+"""Tor zasilania: USB-C -> ladowarka I2C -> ogniwo -> 3V3.
+
+Przeniesiony z `gps_tracker-6l/power.ato` (rewizja 2) prawie bez zmian -
+razem z uzasadnieniami, bo one sa tu wartoscia. Ten plik opisuje blok,
+ktory na tamtej plytce zostal przemierzony i przemyslany; powtarzanie go
+od zera byloby powtarzaniem takze bledow rewizji 1.
+
+Ogniwo bez zmian: AKYGA LP953450 (1900mAh, 1S, wbudowany PCM), 3 zyly
+AWG26 (czerwona +, czarna -, zolta NTC) w gniazdku Molex PicoBlade - to
+samo gniazdo, wiec ten sam pakiet wchodzi w obie plytki.
+  * Ladowanie do 4.2V, odciecie 3.0V, max charge 1C (1.9A), max discharge 1C.
+  * Ladowanie dozwolone tylko w 0..45 stC - stad dzielnik na TS.
+
+Z czego sklada sie ten tor i dlaczego tak
+-----------------------------------------
+1. **BQ25896, nie ladowarka liniowa.** Liniowa przy 540mA tracila do
+   1.08W w obudowie 3x3mm, wiec prad byl dobrany pod cieplo, nie pod
+   ogniwo. BQ25896 to przetwornica 1.5MHz - cieplo przestaje byc limitem,
+   a pradem rzadzi rejestr I2C. Przy 1.3A (0.68C) ladowanie schodzi do
+   ok. 2h.
+2. **NVDC (power path).** BQ25896 ma osobne wyjscie SYS, trzymane nad
+   SYS_MIN nawet przy pustym ogniwie. Cala plytka wisi na SYS, nie na
+   ogniwie: z rozladowanym pakietem - albo CALKIEM BEZ pakietu, co na dev
+   boardzie jest przypadkiem normalnym - wystarczy wpiac USB i procesor
+   wstaje.
+3. **BQ27441 z bocznikiem po stronie dodatniej.** Gauge mierzy prad po
+   stronie WYSOKIEJ (karta katalogowa, opis SRP/SRN), wiec **masa ogniwa
+   jest masa systemowa**. Nie ma w tym projekcie ani jednego
+   rozdzielonego wezla masy, a termistor pakietu nie wraca przez bocznik.
+4. **Buck-boost, nie buck.** NVDC nie pozwala zejsc do zwyklego bucka:
+   SYS jest trzymane nad SYS_MIN tylko gdy VBUS jest obecne; przy
+   zasilaniu z ogniwa SYS idzie za VBAT przez BATFET, wiec spada do 3.0V.
+   3V3 wymaga przetwornicy w obie strony.
+
+Jedna rzecz jest tu inna niz w trackerze: **CC**
+------------------------------------------------
+Tracker prowadzil CC1/CC2 wprost do UCPD w STM32U5 i negocjowal kontrakt
+PD 5V/3A. **STM32WB55 nie ma UCPD** - w liscie peryferiow tego ukladu
+(`STM32WB55CGUx.xml`: ADC1, AES, COMP, CRC, I2C1/I2C3, LCD, LPTIM1/2,
+LPUART1, PKA, QUADSPI, RNG, RTC, SAI1, SPI1, TIM1/2/16/17, USART1, USB)
+nie ma ani UCPD, ani zadnego innego bloku PD. Tej funkcji nie da sie
+"dopisac w firmware": PD wymaga nadajnika BMC na linii CC.
+
+Zamiast tego wraca uklad z rewizji 1 trackera, ale uzyty swiadomie:
+dwa rezystory 5.1k do masy PLUS pomiar napiecia na CC przez ADC.
+
+**Nic na tej plytce nie "wlacza" 3A - zrodlo oferuje je samo.** Warto to
+rozumiec dokladnie, bo inaczej szuka sie peryferialu, ktorego nie ma.
+Zrodlo USB-C wystawia na CC **Rp** (podciagniecie do swojej szyny albo
+zrodlo pradowe) i to JEST deklaracja, nie negocjacja. Nasze Rd zamyka
+obwod i zamienia ja na napiecie stale:
+
+    co zrodlo daje przy 5V     Rp (rezystor / zrodlo pradowe)   na Rd 5.1k
+    Default USB (500/900mA)    56k do 5V  /  80uA               0.42 / 0.41 V
+    1.5A                       22k do 5V  / 180uA               0.94 / 0.92 V
+    3.0A                       10k do 5V  / 330uA               1.69 / 1.68 V
+
+Obie metody trafiaja w to samo okno - tak sa dobrane. Progi odczytu
+z normy Type-C (vRd-Connect):
+
+    0.25 .. 0.61 V   Default USB
+    0.70 .. 1.16 V   1.5A
+    1.31 .. 2.04 V   3.0A
+
+Przerwy miedzy oknami (0.61..0.70 i 1.16..1.31 V) sa martwe. Pomiar,
+ktory w nie wpadnie, ma zostawic poprzednia - NIZSZA - wartosc.
+
+**VBUS jest zywe z pelna zadeklarowana zdolnoscia od chwili, w ktorej
+zrodlo wykryje Rd.** Nie trzeba o nie prosic. Cala umowa polega na tym,
+ze to ODBIORNIK pilnuje, by nie wziac wiecej - a u nas pilnuje tego
+ladowarka przez IINLIM i rezystor na ILIM.
+
+Interfejsem procesora sa wiec **dwa kanaly przetwornika** (PA0 = ADC1_IN5,
+PA1 = ADC1_IN6) i nic poza tym. Protokolem jest tu napiecie stale, wiec
+przetwornik jest kompletnym i poprawnym interfejsem; nie ma czego
+dekodowac.
+
+Mierzymy OBA wezly CC, bo przez kabel podlaczony jest tylko jeden - drugi
+niesie VCONN albo Ra kabla e-markowanego. Ten z napieciem to ten
+podlaczony, i przy okazji mowi, ktora strona wtyku jest w gorze.
+Rp moze sie zmienic w trakcie pracy (hub rozdzielajacy moc miedzy porty),
+wiec odczyt powtarza sie, a nie robi raz przy starcie.
+
+Czego ta droga NIE daje: innego napiecia niz 5V. Przy 1S Li-Po nie jest
+potrzebne - ogniwo przyjmie najwyzej 1.9A (1C), czyli ok. 8W, a 5V/3A to
+15W. Wiecej o tym, dlaczego uklad PD tu nie wchodzi, w README.
+
+Drugi skutek tej zmiany jest korzystny. W trackerze "dead battery Rd"
+siedzialo wewnatrz UCPD i zalezalo od zwarcia DBCC-CC; tutaj Rd to dwa
+rezystory, ktore sa czynne zawsze - takze gdy procesor jest martwy albo
+niezaprogramowany. Plytka prosto z montazu, z pustym gniazdem ogniwa,
+dostaje VBUS i wstaje.
+
+Co naprawde ustala prad wejsciowy
+---------------------------------
+Prad wejsciowy jest **minimum z trzech** rzeczy. Karta katalogowa
+BQ25896 mowi to wprost: "The charger input current is always limited by
+the lower of IINLIM register or ILIM pin at all-time regardless of
+Input Current Optimizer (ICO) is enable or disabled".
+
+1. **Rezystor na ILIM (121R) - sufit sprzetowy.** I_INMAX = K_ILIM/R_ILIM
+   = 2.64 / 2.93 / 3.22 A. Zaden zapis po I2C tego nie przeskoczy; to
+   zabezpieczenie przed bledem firmware'u, nie nastawa.
+2. **Rejestr IINLIM (REG00[5:0])**, 100mA..3.25A co 50mA. Jego wartosc po
+   wlaczeniu bierze sie z detekcji zrodla i nozki PSEL:
+       PSEL wysoko (nasz przypadek) -> USB SDP   -> 500mA
+       PSEL nisko                   -> DCP       -> 3.25A
+3. **ICO (Input Current Optimizer), domyslnie wlaczony (ICO_EN = 1).**
+   Sam podnosi prad az do progu, przy ktorym zrodlo zaczyna siadac,
+   czyli MIERZY, ile zrodlo naprawde daje, zamiast wierzyc deklaracji.
+   Wynik laduje w `IDPM_LIM` (REG13), a `ICO_OPTIMIZED` (REG14[6]) mowi,
+   ze skonczyl.
+
+   **Haczyk: ICO rusza sam tylko po wykryciu DCP/MaxCharge.** Przy PSEL
+   wysoko jestesmy wykryci jako SDP, wiec sam NIE wystartuje - firmware
+   musi ustawic `FORCE_ICO` (REG09[7]). Bez tego najlepszy mechanizm
+   w tej ladowarce po prostu nie zadziala.
+
+Pod spodem jest jeszcze VINDPM: gdy zrodlo siada, ladowarka sama cofa
+prad, az napiecie wroci. Dzieki temu zbyt optymistyczny IINLIM konczy sie
+"laduje wolniej", a nie zapadnieciem szyny.
+
+Co zostaje do zrobienia w firmware
+----------------------------------
+Sprzet jest tak dobrany, zeby **dzialal bez firmware'u** i zeby firmware
+tylko go przyspieszal. Z montazu plytka ciagnie 500mA i to jest wybor,
+nie przeoczenie: rejestr ICHG startuje z 2048mA (1.08C - powyzej tego, co
+ogniwo dopuszcza!), wiec to limit WEJSCIA pilnuje ogniwa. Przy 500mA z 5V
+do ogniwa dojdzie ok. 0.6A. Dlatego /CE moze byc domyslnie nisko.
+
+Sekwencja, ktora podnosi to do pelnej predkosci:
+
+    1. ADC na CC1/CC2    ->  ktore okno z tabeli wyzej
+    2. IINLIM := 500mA / 1.5A / 3.0A       <- deklaracja zrodla, sufit
+    3. FORCE_ICO = 1                       <- ladowarka szuka maksimum POD tym sufitem
+    4. odczyt IDPM_LIM i ICO_OPTIMIZED     <- ile naprawde wyszlo
+    5. ICHG := 1300mA (0.68C)
+    6. watchdog I2C co < 40s
+
+Kroki 1-2 to zaufanie deklaracji, krok 3 to pomiar - i dlatego warto
+zrobic oba, a nie wybierac.
+
+Watchdog: po 40s bez odswiezenia uklad wraca do wartosci domyslnych,
+czyli do 500mA na wejsciu. Jest to wiec zabezpieczenie, nie przeszkoda:
+zawieszony firmware nie zostawia ogniwa ladowanego zbyt mocno, tylko
+zbyt slabo. Wylaczenie watchdoga (WATCHDOG=00) te siatke bezpieczenstwa
+zdejmuje - jesli firmware ma go wylaczyc, musi sam pilnowac pradu.
+"""
+
+#pragma experiment("BRIDGE_CONNECT")
+
+import ElectricPower
+import ElectricLogic
+import Electrical
+import Capacitor
+import Resistor
+import Inductor
+import Battery
+import USB2_0
+import I2C
+import Regulator
+
+from "parts/Global_Connector_Technology_USB4085_GF_A/Global_Connector_Technology_USB4085_GF_A.ato" import Global_Connector_Technology_USB4085_GF_A_package
+from "parts/MOLEX_532610371/MOLEX_532610371.ato" import MOLEX_532610371_package
+from "parts/Texas_Instruments_BQ25896RTWR/Texas_Instruments_BQ25896RTWR.ato" import Texas_Instruments_BQ25896RTWR_package
+from "parts/Texas_Instruments_BQ27441DRZT_G1A/Texas_Instruments_BQ27441DRZT_G1A.ato" import Texas_Instruments_BQ27441DRZT_G1A_package
+from "parts/Texas_Instruments_TPS63020DSJR/Texas_Instruments_TPS63020DSJR.ato" import Texas_Instruments_TPS63020DSJR_package
+from "parts/STMicroelectronics_USBLC6_2SC6/STMicroelectronics_USBLC6_2SC6.ato" import STMicroelectronics_USBLC6_2SC6_package
+
+
+module UsbCPort:
+    """Gniazdo USB-C GCT USB4085-GF-A z Rd 5.1k i pomiarem CC przez ADC.
+
+    To samo gniazdo co w trackerze - USB 2.0, katowe. STM32WB55 ma USB
+    full-speed (12Mbps), czyli wymaga od gniazda jeszcze mniej niz
+    high-speed; nie ma powodu zmieniac czesci, ktora juz raz przeszla
+    montaz.
+    """
+    conn = new Global_Connector_Technology_USB4085_GF_A_package
+    usb2 = new USB2_0
+    vbus = new ElectricPower
+
+    # Wyprowadzenia do procesora: oba wezly CC ida na wejscia ADC
+    cc1 = new Electrical
+    cc2 = new Electrical
+
+    vbus ~ usb2.usb_if.buspower
+    assert vbus.voltage within 4.75V to 5.5V
+
+    conn.VBUS ~ vbus.hv
+    conn.GND ~ vbus.lv
+    conn.SIG_S1 ~ vbus.lv   # ekran obudowy
+
+    # USB 2.0 nie ma osobnych par dla obu orientacji wtyku - zeby kabel
+    # dzialal odwrocony, obie pary musza byc zwarte na plytce.
+    conn_dp = new Electrical
+    conn_dn = new Electrical
+    # Takze tutaj przyrostki `_P` / `_N` - z tego samego powodu co w `mcu.ato`.
+    # Baza `USB_CONN` jest INNA niz `USB_D` po drugiej stronie diody ESD,
+    # zeby KiCad nie probowal skojarzyc w pare sieci z dwoch roznych odcinkow
+    # toru.
+    conn_dp.override_net_name = "USB_CONN_P"
+    conn_dn.override_net_name = "USB_CONN_N"
+    conn.Dp1 ~ conn_dp
+    conn.Dp2 ~ conn_dp
+    conn.Dn1 ~ conn_dn
+    conn.Dn2 ~ conn_dn
+
+    # Ochrona ESD miedzy gniazdem a procesorem. Linie danych ida PRZEZ
+    # obudowe (piny 1->6 i 3->4), wiec na parze roznicowej nie powstaje
+    # odgalezienie. Uklad ma stanac przy samym gniezdzie.
+    esd = new STMicroelectronics_USBLC6_2SC6_package
+    conn_dp ~ esd.IO1_conn
+    conn_dn ~ esd.IO2_conn
+    esd.IO1_mcu ~ usb2.usb_if.d.p.line
+    esd.IO2_mcu ~ usb2.usb_if.d.n.line
+    esd.VBUS ~ vbus.hv
+    esd.GND ~ vbus.lv
+    # SBU1 / SBU2 zostaja niepodlaczone - uzywa ich tylko tryb alternatywny
+
+    # ─── CC: dwa Rd 5.1k i pomiar napiecia ───
+    # WB55 nie ma UCPD, wiec Rd nie moze byc w srodku procesora - musi
+    # byc tutaj. Wartosc nie jest dowolna: norma USB-C wymaga 5.1k
+    # +/-20%, bo po napieciu na Rd zrodlo rozpoznaje typ odbiornika.
+    # Dlatego rezystory +/-1%, a nie zwykle +/-5%: caly budzet tolerancji
+    # idzie na zrodlo pradowe Rp, nie na nas.
+    #
+    # Te dwa rezystory sa czynne ZAWSZE, takze przy martwym procesorze
+    # i pustym gniezdzie ogniwa. Bez nich zrodlo USB-C **wcale nie podaje
+    # VBUS**, czyli plytka prosto z montazu nie wstalaby ani nie dalaby
+    # sie zaprogramowac.
+    #
+    # Oba wezly ida jednoczesnie na wejscia ADC procesora. Napiecie na
+    # tym Rd, ktory trafil na podlaczone CC, mowi ile zrodlo daje:
+    #     ~0.41V -> domyslne USB,  ~0.92V -> 1.5A,  ~1.68V -> 3.0A
+    # a drugi wezel zostaje przy zerze i tym samym mowi, ktora strona
+    # wtyku jest w gorze. Maksimum przy Rp = 3A to ok. 2.04V, czyli pod
+    # VDDA - nie trzeba dzielnika, pomiar jest bezposredni.
+    #
+    # Dzielnika NIE WOLNO tu dodac z innego powodu: kazdy rezystor
+    # rownolegly do Rd zmienia Rd, a Rd jest tu deklaracja wobec zrodla.
+    cc_rd = new Resistor[2]
+    for r in cc_rd:
+        r.resistance = 5.1kohm +/- 1%
+        r.package = "0603"
+        r.lcsc_id = "C23186"  # 5.1k +/-1% 0603
+    conn.CC1 ~ cc1
+    conn.CC2 ~ cc2
+    cc1 ~> cc_rd[0] ~> vbus.lv
+    cc2 ~> cc_rd[1] ~> vbus.lv
+
+    # ─── Czego tu NIE MA: dzielnika VBUS_SENSE ───
+    # Tracker mial na VBUS dzielnik 100k/15.8k z filtrem, bo maszyna
+    # stanow USBPD musi widziec vSafe0V i vSafe5V szybciej niz raz na
+    # sekunde. Bez PD nie ma tych terminow: obecnosc VBUS zglasza /PG
+    # ladowarki (przerwaniem, nie odpytywaniem), a samo napiecie mierzy
+    # ADC w BQ25896 po I2C. Zostaje mniej o dwa rezystory, kondensator
+    # i jedna nozke procesora - a ta nozka jest na tej plytce towarem
+    # deficytowym, bo UFQFPN-48 ma ich 30 na wszystko.
+    #
+    # Karta katalogowa BQ25896 chce 1uF na samym VBUS, a reszte
+    # pojemnosci wejsciowej na PMID - stoi wiec w ChargerBq25896.
+    # Tu zostaje tylko odsprzeganie gniazda.
+    vbus_cap = new Capacitor
+    vbus_cap.capacitance = 10uF +/- 20%
+    vbus_cap.package = "0603"
+    vbus_cap.lcsc_id = "C479655"  # 0603X106M250NT, 10uF 25V X5R +/-20% 0603
+    assert vbus_cap.max_voltage within 10V to 50V
+    vbus.hv ~> vbus_cap ~> vbus.lv
+
+
+module BatteryConnector:
+    """Gniazdo plytkowe pod ogniwo: Molex PicoBlade 53261-0371 (SMT katowe).
+
+    Pinologia 1 = BAT+, 2 = BAT-, 3 = NTC, jak fabryczne kolory
+    (czerwony / czarny / zolty).
+
+    Inaczej niz w rewizji 1: **minus ogniwa jest tu masa systemowa**.
+    Bocznik gauge'a przenosi sie na strone dodatnia, wiec nie ma juz
+    czego rozdzielac.
+    """
+    conn = new MOLEX_532610371_package
+    power = new ElectricPower
+    ntc = new Electrical
+
+    assert power.voltage within 3.0V to 4.2V
+
+    conn.BATP ~ power.hv
+    conn.BATN ~ power.lv
+    conn.NTC ~ ntc
+    # Rewizja 1 zostawila ekran gniazda luzem. Tutaj idzie na mase -
+    # gniazdo siedzi na krawedzi plytki i konczy sie kablem.
+    conn.SHELL ~ power.lv
+
+
+module ChargerBq25896:
+    """TI BQ25896RTWR (WQFN-24) - przetwornicowa ladowarka 1S z NVDC, I2C 0x6B.
+
+    Trzy szyny, nie dwie: VBUS (wejscie), SYS (wyjscie przetwornicy,
+    zasila plytke) i BAT (ogniwo, za BATFET-em). To sedno NVDC - SYS jest
+    trzymane nad SYS_MIN (domyslnie 3.5V) niezaleznie od tego, czy ogniwo
+    ma jakiekolwiek napiecie.
+
+    Pin 24 jest w tej obudowie NC (sprawdzone w karcie katalogowej) -
+    wygenerowana czesc nie nadaje mu sygnalu i tak ma zostac.
+
+    UWAGA na literowke: EasyEDA nazwala pin 10 `LIIM`, a w karcie
+    katalogowej jest `ILIM`. Ponizej musi byc `ic.LIIM`.
+    """
+    ic = new Texas_Instruments_BQ25896RTWR_package
+
+    power_in = new ElectricPower    # VBUS z gniazda
+    power_sys = new ElectricPower   # SYS - szyna plytki
+    power_bat = new ElectricPower   # BAT - ogniwo za bocznikiem
+    i2c = new I2C
+
+    # Wyjscia open-drain, pull-upy stoja w PowerStack
+    power_good = new ElectricLogic  # /PG  - nisko = zrodlo dobre
+    charging = new ElectricLogic    # STAT - nisko = ladowanie trwa
+    interrupt = new ElectricLogic   # /INT - impuls 256us przy zmianie/awarii
+
+    # /CE - nisko wlacza ladowanie. Karta katalogowa: "CE pin must be
+    # pulled High or Low", wiec nie moze wisiec. Dostaje sciagacz do masy
+    # i GPIO. Po resecie procesora pin jest wejsciem (Hi-Z), wiec
+    # sciagacz decyduje: ladowanie DZIALA bez firmware'u. Bezpieczne, bo
+    # prad ogranicza wejscie (500mA z PSEL), a nie rejestr ICHG.
+    charge_enable = new ElectricLogic
+
+    # Wezly, ktore musza miec nazwy, bo inaczej narzedzia do layoutu nie
+    # rozpoznaja, czym sa. SW jest najglosniejszym wezlem na plytce.
+    net_sw = new Electrical
+    net_pmid = new Electrical
+    net_regn = new Electrical
+    net_ts = new Electrical
+    net_sw.override_net_name = "SW_CHG"
+    net_pmid.override_net_name = "PMID"
+    net_regn.override_net_name = "REGN"
+    net_ts.override_net_name = "NTC"
+
+    assert power_in.voltage within 4.75V to 5.5V
+    assert power_sys.voltage within 3.0V to 4.6V
+    assert power_bat.voltage within 3.0V to 4.25V
+
+    # Jedna masa - uklad nie ma osobnego pinu masy analogowej, tylko
+    # PGND (17, 18) i pad. Karta katalogowa prosi o polaczenie PGND z
+    # masa analogowa w jednym punkcie przy samym ukladzie; to zadanie dla
+    # layoutu, nie dla netlisty.
+    power_in.lv ~ power_sys.lv
+    power_in.lv ~ power_bat.lv
+
+    ic.VBUS ~ power_in.hv
+    ic.PMID ~ net_pmid
+    ic.PGND ~ power_in.lv
+    ic.EPAD ~ power_in.lv        # pad termiczny = PGND
+    ic.SW ~ net_sw
+    ic.SYS ~ power_sys.hv
+    ic.BAT ~ power_bat.hv
+    ic.REGN ~ net_regn
+    ic.TS ~ net_ts
+    ic.SCL ~ i2c.scl.line
+    ic.SDA ~ i2c.sda.line
+    ic.PG ~ power_good.line
+    ic.STAT ~ charging.line
+    ic.INT ~ interrupt.line
+    ic.CE ~ charge_enable.line
+
+    # PSEL wysoko = zrodlo widziane jako USB host = domyslny limit
+    # wejscia 500mA. Napiecie bierze sie z REGN, a nie z VBUS, i to jest
+    # istotne: PSEL znosi 7V, a VBUS moze dojsc do 22V. REGN to
+    # regulowane 5V, ktore karta katalogowa i tak uzywa jako odniesienie
+    # dla TS. Sekwencja zalaczania pilnuje kolejnosci: REGN wstaje w
+    # kroku 1, PSEL jest czytane w kroku 3.
+    ic.PSEL ~ net_regn
+
+    # OTG na masie - tryb boost (5V na VBUS) nie jest tu do niczego
+    # potrzebny, a wysoki stan na tym pinie razem z OTG_CONFIG=1 by go
+    # wlaczyl. Uziemienie zamyka sprawe po stronie sprzetu.
+    ic.OTG ~ power_in.lv
+
+    # /QON zostaje LUZEM, swiadomie. Ma wewnetrzny pull-up, a karta
+    # katalogowa pokazuje go w schemacie aplikacyjnym jako "Optional".
+    # Sluzy do wyjscia z ship mode - i GPIO by tu nic nie dal, bo ship
+    # mode odcina SYS, czyli procesor, ktory mialby ten GPIO poruszyc.
+    # Z ship mode wychodzi sie wpieciem USB albo przyciskiem do masy;
+    # jesli kiedys ma byc przycisk, to jest ten pin.
+
+    # ─── Cewka mocy ───
+    # Karta katalogowa: 1uH i minimum 20uF na SYS, dla stabilnosci petli.
+    # Przez cewke plynie prad SYS RAZEM z pradem ladowania, nie sam prad
+    # ladowania - to wyjscie przetwornicy zasila i plytke, i ogniwo.
+    # Przy ICHG = 1.3A i 0.4A obciazenia to 1.7A srednio, a tetnienie
+    # przy D = 0.5 wynosi VBUS/(4*fs*L) = 0.83A, wiec szczyt ok. 2.1A.
+    # MWSA/SPM 2.5x2.0mm ma Isat 5.6A - ponad dwa razy zapasu, i nie
+    # cewka jest tu granica, tylko dopuszczalne 1C ogniwa.
+    inductor = new Inductor
+    inductor.inductance = 1uH +/- 20%
+    inductor.lcsc_id = "C7471163"  # SPM2512-1R0MA, 2.5x2.0mm, 35mOhm
+    assert inductor.max_current within 3A to 6A
+    assert inductor.saturation_current within 5A to 8A
+    net_sw ~> inductor ~> power_sys.hv
+
+    # ─── ILIM: sprzetowy sufit pradu wejscia ───
+    # I_INMAX = K_ILIM / R_ILIM, K_ILIM = 320 / 355 / 390 A*Ohm.
+    # 121 Ohm daje 2.64 / 2.93 / 3.22 A. Gorny koniec swiadomie NIE
+    # przekracza 3.25A, czyli maksimum rejestru IINLIM - dzieki temu sufit
+    # sprzetowy nigdy nie jest luzniejszy od programowego, a realny limit
+    # to zawsze mniejsza z dwoch wartosci.
+    #
+    # Zapas jest duzy: przy ICHG = 1.3A plytka ciagnie z 5V ok. 1.4A.
+    # Rezystor zostaje taki sam jak w trackerze, choc ta plytka nigdy
+    # nie podejdzie do 2.9A - sufit sprzetowy ma byc ciasniejszy od
+    # programowego maksimum IINLIM (3.25A), a nie dopasowany do
+    # obciazenia. Zrodlo 1.5A albo 3A przydaje sie po to, zeby
+    # ladowanie nie zwalnialo, kiedy radio nadaje.
+    ilim_res = new Resistor
+    ilim_res.resistance = 121ohm +/- 1%
+    ilim_res.package = "0603"
+    ilim_res.lcsc_id = "C705721"  # 121R 0603 cienkowarstwowy
+    ic.LIIM ~> ilim_res ~> power_in.lv
+
+    # ─── TS: okno temperatury ladowania ───
+    # Dzielnik REGN -> TS -> GND, a termistor pakietu (103AT, 10k/25stC)
+    # wchodzi rownolegle do dolnej galezi. Progi JEITA sa ulamkiem REGN:
+    # T1 = 73.25% (0 stC), T2 = 68.25% (10), T3 = 44.75% (45),
+    # T5 = 34.375% (60).
+    #
+    # Z dwoch rownan (0 stC -> 27.28k, 45 stC -> 4.911k) wychodzi
+    # 5.20k / 29.84k; karta katalogowa podaje w schemacie aplikacyjnym
+    # 5.23k / 30.1k. Bierzemy 5.23k i 30.0k (to, co jest w magazynie) -
+    # sprawdzone, ze wszystkie cztery progi zostaja w oknie z karty:
+    #   0 stC -> 73.20% (okno 72.75..73.75)
+    #  45 stC -> 44.66% (okno 44.25..45.25)
+    # a progi, ktorych dzielnik nie dopasowywal, wypadaja przy 10.1 stC
+    # i 60.5 stC - po 0.5 stC od nominalu. Krzywa 103AT zgadza sie z
+    # procentami TI nie przez przypadek; to pod nia sa dobrane.
+    #
+    # Pakiet odpiety = na TS zostaje samo 30.0k = 85% REGN = "zimniej niz
+    # 0 stC" = ladowanie wstrzymane. Awaria w bezpieczna strone, i nie
+    # trzeba juz rezystora 249k, ktory w rewizji 1 ratowal BQ24092 przed
+    # wejsciem w TTDM.
+    ts_top = new Resistor
+    ts_top.resistance = 5.23kohm +/- 1%
+    ts_top.package = "0603"
+    ts_top.lcsc_id = "C227977"  # YAGEO AC0603FR-075K23L, 5.23k +/-1%
+    net_regn ~> ts_top ~> net_ts
+
+    ts_bot = new Resistor
+    ts_bot.resistance = 30kohm +/- 1%
+    ts_bot.package = "0603"
+    ts_bot.lcsc_id = "C191779"  # PANASONIC ERJ3RBD3002V, 30.0k +/-0.5%
+    net_ts ~> ts_bot ~> power_in.lv
+
+    # ESD na linii, ktora wychodzi kablem poza plytke
+    ts_cap = new Capacitor
+    ts_cap.capacitance = 100nF +/- 10%
+    ts_cap.package = "0603"
+    ts_cap.lcsc_id = "C14663"  # 100nF 50V X7R +/-10% 0603
+    assert ts_cap.max_voltage within 10V to 50V
+    net_ts ~> ts_cap ~> power_in.lv
+
+    # /CE domyslnie nisko - patrz komentarz przy deklaracji
+    ce_pulldown = new Resistor
+    ce_pulldown.resistance = 100kohm +/- 1%
+    ce_pulldown.package = "0603"
+    ce_pulldown.lcsc_id = "C25803"  # 100k +/-1% 0603
+    charge_enable.line ~> ce_pulldown ~> power_in.lv
+
+    # ─── Kondensatory z karty katalogowej ───
+    # 1uF na samym VBUS, reszta pojemnosci wejsciowej na PMID (karta
+    # katalogowa sugeruje 8.2uF przy 3-5A ladowania).
+    vbus_cap = new Capacitor
+    vbus_cap.capacitance = 1uF +/- 20%
+    vbus_cap.package = "0603"
+    vbus_cap.lcsc_id = "C5673"  # 1uF 25V X5R +/-10% 0603
+    assert vbus_cap.max_voltage within 25V to 50V
+    power_in.hv ~> vbus_cap ~> power_in.lv
+
+    pmid_cap = new Capacitor
+    pmid_cap.capacitance = 10uF +/- 20%
+    pmid_cap.package = "0603"
+    pmid_cap.lcsc_id = "C479655"  # 0603X106M250NT, 10uF 25V X5R +/-20% 0603
+    assert pmid_cap.max_voltage within 25V to 50V
+    net_pmid ~> pmid_cap ~> power_in.lv
+
+    # Bootstrap: 47nF miedzy SW i BTST. Karta katalogowa podaje wartosc
+    # wprost i nie ma powodu jej ruszac - to zasilanie bramki gornego
+    # tranzystora przy 1.5MHz.
+    btst_cap = new Capacitor
+    btst_cap.capacitance = 47nF +/- 10%
+    btst_cap.package = "0603"
+    btst_cap.lcsc_id = "C107093"  # YAGEO CC0603KRX7R9BB473, 47nF 50V X7R
+    assert btst_cap.max_voltage within 25V to 50V
+    net_btst = new Electrical
+    net_btst.override_net_name = "BTST"
+    ic.BTST ~ net_btst
+    net_btst ~> btst_cap ~> net_sw
+
+    # REGN: 4.7uF, minimum 10V. Zasila bramki i polaryzuje TS.
+    regn_cap = new Capacitor
+    regn_cap.capacitance = 4.7uF +/- 20%
+    regn_cap.package = "0603"
+    regn_cap.lcsc_id = "C69335"  # 4.7uF 25V X5R +/-10% 0603
+    assert regn_cap.max_voltage within 10V to 50V
+    net_regn ~> regn_cap ~> power_in.lv
+
+    # SYS: karta katalogowa chce minimum 20uF przy cewce 1uH, i to jest
+    # wymog STABILNOSCI petli, nie tylko tetnienia. Dwa razy 22uF daja
+    # 44uF na papierze; klasa X5R w 0603 przy 4.2V podkladu traci istotna
+    # czesc pojemnosci, ale nawet przy polowie zostaje ponad 20uF.
+    # Dlatego dwa kondensatory, a nie jeden 22uF.
+    sys_caps = new Capacitor[2]
+    for c in sys_caps:
+        c.capacitance = 22uF +/- 20%
+        c.package = "0603"
+        c.lcsc_id = "C86295"  # 22uF 10V X5R +/-20% 0603
+        assert c.max_voltage within 10V to 50V
+        power_sys.hv ~> c ~> power_sys.lv
+
+    bat_cap = new Capacitor
+    bat_cap.capacitance = 10uF +/- 20%
+    bat_cap.package = "0603"
+    bat_cap.lcsc_id = "C479655"  # 0603X106M250NT, 10uF 25V X5R +/-20% 0603
+    assert bat_cap.max_voltage within 10V to 50V
+    power_bat.hv ~> bat_cap ~> power_bat.lv
+
+
+module FuelGaugeBq27441:
+    """TI BQ27441DRZT-G1A (SON-12) - gauge Impedance Track, I2C 0x55.
+
+    Wariant **-G1A** jest wazny: ma wpisana chemie LiCoO2 z maksymalnym
+    napieciem ladowania 4.2V. Wersja -G1B celuje w 4.35V i dla naszego
+    ogniwa bylaby zla.
+
+    Litera po `DRZ` to **tylko nawijka**, nie uklad: tracker ma `DRZR`
+    (duza rolka), tutaj jest `DRZT` (krotka tasma, C2864880). Ta sama
+    obudowa SON-12-EP, ta sama pinologia (sprawdzone wyprowadzenie po
+    wyprowadzeniu wobec czesci z trackera), ta sama chemia. Podmiana
+    wynika z magazynu, nie z projektu: `DRZR` (C473397) ma na LCSC
+    **stan 0**, `DRZT` - 962 szt.
+
+    Dwie rzeczy, ktorych nie ma poprzednik (BQ34Z100):
+      * **bocznik po stronie dodatniej.** Karta katalogowa: "external
+        10 mOhm, 1% sense resistor in the high-side current path", SRP po
+        stronie ogniwa (PACKP), SRN po stronie systemu. Uklad jest
+        fabrycznie skalibrowany pod 10 mOhm, wiec ta wartosc nie jest
+        propozycja - jest warunkiem, zeby nie kalibrowac.
+      * **VDD jest WYJSCIEM.** To 1.8V z wewnetrznego LDO, nie zasilanie.
+        Uklad zywi sie z BAT. Podanie tu 3.3V zniszczyloby go - absolutne
+        maksimum na VDD to 2V.
+
+    Termometru nie ma na zewnatrz: uklad mierzy temperature wewnetrznie,
+    a termistor pakietu obsluguje ladowarka. W rewizji 1 wychodzilo to
+    samo, ale przez rozumowanie o kolizji dwoch ukladow o jeden czujnik;
+    tutaj wynika wprost z pinologii.
+    """
+    ic = new Texas_Instruments_BQ27441DRZT_G1A_package
+
+    power_pack = new ElectricPower   # PACKP (plus ogniwa) i masa systemowa
+    system_side = new Electrical     # druga strona bocznika -> BAT ladowarki
+    i2c = new I2C
+    soc_interrupt = new ElectricLogic  # GPOUT, open-drain
+
+    assert power_pack.voltage within 3.0V to 4.25V
+
+    # BAT to jednoczesnie zasilanie i wezel pomiarowy napiecia, wiec
+    # karta katalogowa kaze go dociagnac Kelvinem do PACKP - po STRONIE
+    # OGNIWA bocznika, nie systemu. Inaczej gauge mierzylby napiecie
+    # pomniejszone o spadek na boczniku, czyli tym gorzej, im wiecej
+    # pradu plynie.
+    ic.BAT ~ power_pack.hv
+    ic.VSS ~ power_pack.lv
+    ic.EP ~ power_pack.lv
+    ic.SDA ~ i2c.sda.line
+    ic.SCL ~ i2c.scl.line
+    ic.GPOUT ~ soc_interrupt.line
+
+    # Piny 4, 9 i 11 to NC - karta katalogowa pozwala je zostawic luzem
+    # albo dac na VSS. Wygenerowana czesc nie nadaje im sygnalu.
+
+    # ─── Bocznik ───
+    # SRP po stronie ogniwa, SRN po stronie systemu. Odwrocenie da prad z
+    # przeciwnym znakiem - gauge bedzie raportowal ladowanie przy
+    # rozladowywaniu.
+    #
+    # Spadek: 10 mOhm * 1.3A = 13mV przy pelnym pradzie ladowania. Widzi
+    # go pin BAT ladowarki, wiec teoretycznie zaniza prog terminacji -
+    # ale terminacja zapada przy ok. 100mA, gdzie spadek to 1mV.
+    # Straty: 17mW przy 1.3A, nic dla 1206.
+    sense_res = new Resistor
+    sense_res.resistance = 10mohm +/- 1%
+    sense_res.package = "1206"
+    sense_res.lcsc_id = "C105362"  # FMF06FTHR010-LH, 10mOhm +/-1% 1W, TCR +/-70ppm
+    power_pack.hv ~> sense_res ~> system_side
+    ic.SRP ~ power_pack.hv
+    ic.SRN ~ system_side
+
+    # BIN: wykrywanie wpiecia pakietu. Ogniwo jest tu na stale, wiec
+    # karta katalogowa mowi: zostawic BI_PU_EN = 1 i dac 10k do VSS.
+    # Rezystor jest wymagany TAKZE gdy pin jest nieuzywany.
+    #
+    # UWAGA: BIN to wejscie push-pull o absolutnym maksimum VDD + 0.3,
+    # czyli ok. 2.1V. Pull-up do 3.3V zniszczylby go - karta katalogowa
+    # ostrzega wprost, ze jesli juz pull-up, to WYLACZNIE do VDD.
+    bin_pulldown = new Resistor
+    bin_pulldown.resistance = 10kohm +/- 1%
+    bin_pulldown.package = "0603"
+    bin_pulldown.lcsc_id = "C98220"  # YAGEO RC0603FR-0710KL, 10k +/-1% 0603
+    ic.BIN ~> bin_pulldown ~> power_pack.lv
+
+    # LDO 1.8V - karta katalogowa chce "co najmniej 0.47uF". 1uF spelnia
+    # ten warunek i jest ta sama czescia, co reszta plytki.
+    vdd_cap = new Capacitor
+    vdd_cap.capacitance = 1uF +/- 20%
+    vdd_cap.package = "0603"
+    vdd_cap.lcsc_id = "C5673"  # 1uF 25V X5R +/-10% 0603
+    assert vdd_cap.max_voltage within 10V to 50V
+    # Nazwa, zeby na plytce bylo widac, ze to WYJSCIE 1.8V, a nie zasilanie.
+    # Podanie tu 3.3V niszczy uklad - taka siec nie moze nazywac sie
+    # `vdd_cap-power-hv`.
+    net_gauge_vdd = new Electrical
+    net_gauge_vdd.override_net_name = "GAUGE_VDD_1V8"
+    ic.VDD ~ net_gauge_vdd
+    net_gauge_vdd ~> vdd_cap ~> power_pack.lv
+
+    # Odsprzeganie wezla pomiarowego napiecia. Karta katalogowa zaleca go
+    # w kazdej aplikacji: BAT to wysokoomowy wezel pomiarowy, a tetnienie
+    # od impulsow obciazenia wchodzi prosto w wynik.
+    bat_cap = new Capacitor
+    bat_cap.capacitance = 1uF +/- 20%
+    bat_cap.package = "0603"
+    bat_cap.lcsc_id = "C5673"  # 1uF 25V X5R +/-10% 0603
+    assert bat_cap.max_voltage within 10V to 50V
+    power_pack.hv ~> bat_cap ~> power_pack.lv
+
+
+module BuckBoost3V3 from Regulator:
+    """TI TPS63020DSJR (VSON-14) - synchroniczny buck-boost SYS -> 3.3V.
+
+    Zostaje z rewizji 1 bez zmian w topologii; zmienia sie tylko to, skad
+    bierze wejscie. Wczesniej wisial na BAT+, teraz na SYS - i to jest ta
+    sama zmiana, ktora pozwala plytce wstac z pustym ogniwem.
+
+    Sprawdzilem, czy NVDC pozwala wrocic do zwyklego bucka: nie pozwala.
+    SYS jest trzymane nad SYS_MIN tylko przy obecnym VBUS; bez zasilania
+    z zewnatrz SYS idzie za VBAT przez BATFET i schodzi do 3.0V, czyli
+    pod 3.3V. Przetwornica musi umiec w obie strony.
+    """
+    ic = new Texas_Instruments_TPS63020DSJR_package
+
+    power_good = new ElectricLogic   # PG, open-drain
+
+    # Wejscie to SYS: 3.5..4.4V z przetwornicy przy wpietym USB, albo
+    # napiecie ogniwa (3.0..4.2V) przy pracy z baterii.
+    assert power_in.voltage within 3.0V to 4.6V
+    assert power_out.voltage within 3.3V +/- 5%
+
+    power_in.lv ~ power_out.lv
+
+    ic.VIN ~ power_in.hv
+    ic.VINA ~ power_in.hv            # zasilanie stopnia sterujacego
+    ic.GND ~ power_in.lv
+    ic.PGND ~ power_in.lv            # pad termiczny = PGND
+    ic.VOUT ~ power_out.hv
+    ic.PG ~ power_good.line
+
+    # Karta katalogowa: EN i PS/SYNC "must not be left open".
+    #
+    # EN na stale wysoko: buck-boost zasila procesor, wiec procesor nie
+    # moze go wlaczyc, gdyby byl wylaczony. Stan spoczynkowy zalatwiaja
+    # tryby niskiego poboru STM32U5, nie odciecie szyny.
+    #
+    # PS/SYNC nisko = power save. Tracker prawie caly czas ciagnie
+    # znikomy prad, wiec sprawnosc przy malym obciazeniu wazy wiecej niz
+    # stale czestotliwosciowe tetnienie.
+    ic.EN ~ power_in.hv
+    ic.PS_SYNC ~ power_in.lv
+
+    # Cewka mocy. Karta katalogowa laczy 1.5uH z 2x22uF na wyjsciu.
+    inductor = new Inductor
+    inductor.inductance = 1.5uH +/- 20%
+    # FXL0420-1R5-M: rdzen formowany (ekranowany magnetycznie) - na tej
+    # plytce istotniejsze niz w trackerze, bo odbiornik 2.4 GHz jest tu
+    # WEWNATRZ procesora, kilka milimetrow od tej cewki
+    inductor.lcsc_id = "C167205"  # 1.5uH 46mOhm 5A/6A, 4.4x4.2mm
+    assert inductor.max_current within 3A to 10A
+    assert inductor.saturation_current within 4A to 15A
+    ic.L1 ~> inductor ~> ic.L2
+
+    # Dwa najglosniejsze wezly przetwornicy dostaja nazwy - bez nich
+    # atopile numeruje je kolejno i numery zmieniaja sie przy kazdej
+    # przebudowie, a `tools/board_setup.py` musi miec sie czego zlapac.
+    net_sw_bat = new Electrical
+    net_sw_out = new Electrical
+    net_sw_bat ~ ic.L1
+    net_sw_out ~ ic.L2
+    net_sw_bat.override_net_name = "SW_BAT"
+    net_sw_out.override_net_name = "SW_OUT"
+
+    # V_FB = 0.5V, V_OUT = 0.5V * (1 + R1/R2). Karta katalogowa podaje
+    # dla 3.3V wprost R1 = 1M, R2 = 180k -> 3.278V.
+    fb_top = new Resistor
+    fb_top.resistance = 1Mohm +/- 1%
+    fb_top.package = "0603"
+    fb_top.lcsc_id = "C22935"  # 1M +/-1% 0603
+    fb_bot = new Resistor
+    fb_bot.resistance = 180kohm +/- 1%
+    fb_bot.package = "0603"
+    fb_bot.lcsc_id = "C326731"  # 180k 0603 cienkowarstwowy, +/-0.1%
+    ic.VOUT ~> fb_top ~> ic.FB
+    ic.FB ~> fb_bot ~> power_in.lv
+
+    in_cap = new Capacitor
+    in_cap.capacitance = 10uF +/- 20%
+    in_cap.package = "0603"
+    in_cap.lcsc_id = "C479655"  # 0603X106M250NT, 10uF 25V X5R +/-20% 0603
+    assert in_cap.max_voltage within 10V to 50V
+    power_in.hv ~> in_cap ~> power_in.lv
+
+    # Karta katalogowa: max 0.22uF na VINA
+    vina_cap = new Capacitor
+    vina_cap.capacitance = 100nF +/- 10%
+    vina_cap.package = "0603"
+    vina_cap.lcsc_id = "C14663"  # 100nF 50V X7R +/-10% 0603
+    assert vina_cap.max_voltage within 10V to 50V
+    ic.VINA ~> vina_cap ~> power_in.lv
+
+    out_caps = new Capacitor[2]
+    for c in out_caps:
+        c.capacitance = 22uF +/- 20%
+        c.package = "0603"
+        c.lcsc_id = "C86295"  # 22uF 10V X5R +/-20% 0603
+        assert c.max_voltage within 10V to 50V
+        power_out.hv ~> c ~> power_out.lv
+
+
+module PowerStack:
+    """Caly tor zasilania spiety w jeden blok."""
+    usb_port = new UsbCPort
+    charger = new ChargerBq25896
+    gauge = new FuelGaugeBq27441
+    buck_boost = new BuckBoost3V3
+    battery_conn = new BatteryConnector
+    battery = new Battery
+
+    # ─── Wyprowadzenia bloku ───
+    power_3v3 = new ElectricPower
+    power_sys = new ElectricPower    # szyna nieregulowana, 3.0..4.6V
+    pmic_i2c = new I2C               # wspolna dla ladowarki (0x6B) i gauge'a (0x55)
+    cc1 = new Electrical             # -> ADC, przez Rd 5.1k w `UsbCPort`
+    cc2 = new Electrical             # -> ADC, przez Rd 5.1k w `UsbCPort`
+    # Wezly wystawione na punkty pomiarowe
+    vbat_pack = new Electrical       # plus ogniwa, przed bocznikiem
+    vbat_charger = new Electrical     # BAT ladowarki, za bocznikiem
+    thermistor = new Electrical
+
+    assert battery.voltage within 3.0V to 4.2V
+    assert power_3v3.voltage within 3.3V +/- 5%
+
+    # ─── Nazwy sieci ───
+    # Bez tego atopile nazywa siec od pierwszego napotkanego wezla i na
+    # plytce lezy "lv" albo "vina_cap-power-hv". Nazwy nie zmieniaja
+    # ukladu, ale narzedzia do rozmieszczania i trasowania rozpoznaja
+    # mase i szyny wlasnie po nazwie - bez tego traktuja je jak zwykle
+    # sygnaly i nie wyleja pod nie plaszczyzn.
+    # `override_net_name` dziala tylko na polu lezacym wprost w module,
+    # wiec na `power_3v3.lv` juz nie - stad te aliasy. Zadnych elementow
+    # nie dokladaja, tylko nadaja nazwy.
+    net_gnd = new Electrical
+    net_3v3 = new Electrical
+    net_vbus = new Electrical
+    net_sys = new Electrical
+
+    net_gnd ~ power_3v3.lv
+    net_3v3 ~ power_3v3.hv
+    # `+3V3_RAW` bylo tu do momentu, w ktorym zniknela zworka IDD. To ona
+    # rozdzielala wyjscie przetwornicy od szyny systemowej, wiec byly to
+    # DWIE sieci i kazda potrzebowala nazwy. Bez zworki jest jedna sztuka
+    # miedzi i jedna nazwa; druga bylaby konfliktem, nie informacja.
+    net_vbus ~ usb_port.vbus.hv
+    net_sys ~ power_sys.hv
+
+    net_gnd.override_net_name = "GND"
+    net_3v3.override_net_name = "+3V3"
+    net_vbus.override_net_name = "VBUS"
+    net_sys.override_net_name = "SYS"
+    cc1.override_net_name = "CC1"
+    cc2.override_net_name = "CC2"
+    # Dwie strony bocznika to DWIE siecie o niemal tym samym napieciu.
+    # Musza miec osobne nazwy, bo inaczej narzedzia potrafia je uznac za
+    # jedna i zwrzec bocznik.
+    vbat_pack.override_net_name = "VBAT"
+    vbat_charger.override_net_name = "VBAT_CHG"
+    thermistor.override_net_name = "NTC"
+
+    # ─── Tor mocy ───
+    usb_port.vbus ~ charger.power_in
+    usb_port.cc1 ~ cc1
+    usb_port.cc2 ~ cc2
+
+    # Ogniwo wpiete w gniazdo
+    battery.power.hv ~ battery_conn.power.hv
+    battery.power.lv ~ battery_conn.power.lv
+
+    # Plus ogniwa -> bocznik gauge'a -> BAT ladowarki. Bocznik jest
+    # jedynym polaczeniem miedzy tymi dwoma wezlami; caly prad ogniwa, w
+    # obie strony, przechodzi przez niego.
+    battery_conn.power.hv ~ gauge.power_pack.hv
+    gauge.system_side ~ charger.power_bat.hv
+
+    # Masa jest teraz jedna - bocznik siedzi po stronie dodatniej.
+    battery_conn.power.lv ~ gauge.power_pack.lv
+    gauge.power_pack.lv ~ charger.power_in.lv
+
+    # SYS zasila przetwornice 3V3 - nie ogniwo.
+    charger.power_sys ~ power_sys
+    power_sys ~ buck_boost.power_in
+
+    # NTC z pakietu na wezel TS ladowarki. Zamyka sie przez minus
+    # ogniwa, ktory jest masa systemowa - w rewizji 1 wracal przez
+    # bocznik i spadek na boczniku dodawal sie do napiecia na TS.
+    battery_conn.ntc ~ charger.net_ts
+
+    # Wezly diagnostyczne
+    vbat_pack ~ gauge.power_pack.hv
+    vbat_charger ~ charger.power_bat.hv
+    thermistor ~ charger.net_ts
+
+    # ─── Magistrala I2C ukladow zasilania ───
+    # Pull-upy stoja TUTAJ, nie w base.ato jak w rewizji 1. Wartosci
+    # wynikaja z kart katalogowych obu ukladow, wiec naleza do nich, a
+    # nie do plytki - inaczej plytka musi pamietac o czyms, czego nie
+    # widzi.
+    #
+    # Zasilane z +3V3, czyli z tej samej szyny co procesor. Dopoki byla
+    # tu zworka IDD, mialo to znaczenie: pull-upy PRZED zworka podawalyby
+    # po jej wyjeciu 3,3 V na piny spiacego procesora, czyli w jego diody
+    # ochronne. Zworki nie ma, wiec nie ma juz "przed" i "za" - zostaje
+    # jedna szyna i ten wybor przestal byc wyborem.
+    #
+    # Jesli ta magistrala kiedykolwiek zostanie polaczona z inna, ktora
+    # tez ma pull-upy - jeden zestaw trzeba usunac.
+    i2c_pullups = new Resistor[2]
+    for r in i2c_pullups:
+        r.resistance = 4.7kohm +/- 1%
+        r.package = "0603"
+        r.lcsc_id = "C23162"  # 4.7k +/-1% 0603
+    power_3v3.hv ~> i2c_pullups[0] ~> pmic_i2c.scl.line
+    power_3v3.hv ~> i2c_pullups[1] ~> pmic_i2c.sda.line
+
+    charger.i2c ~ pmic_i2c
+    gauge.i2c ~ pmic_i2c
+
+    # ─── Pull-upy linii statusu ───
+    # /PG, STAT i /INT ladowarki oraz GPOUT gauge'a sa open-drain. Karta
+    # katalogowa BQ25896 podaje 10k dla wszystkich trzech; BQ27441 pisze
+    # wprost, ze GPOUT "should not be left floating, even if unused".
+    status_pullups = new Resistor[4]
+    for r in status_pullups:
+        r.resistance = 10kohm +/- 1%
+        r.package = "0603"
+        r.lcsc_id = "C98220"  # YAGEO RC0603FR-0710KL, 10k +/-1% 0603
+    power_3v3.hv ~> status_pullups[0] ~> charger.power_good.line
+    power_3v3.hv ~> status_pullups[1] ~> charger.charging.line
+    power_3v3.hv ~> status_pullups[2] ~> charger.interrupt.line
+    power_3v3.hv ~> status_pullups[3] ~> gauge.soc_interrupt.line
+
+    # ─── Szyna systemowa ───
+    # Wyjscie przetwornicy WPROST na szyne 3V3, bez przerwy na amperomierz.
+    #
+    # Rewizja 1 miala tu zworke na goldpinach 2,54 mm: zdejmowalo sie
+    # zwieracz i wpinalo miernik, zeby zmierzyc pobor calego ukladu bez
+    # wlutowywania sie w plytke. Tutaj tej zworki NIE MA, i to nie jest
+    # oszczednosc miejsca:
+    #
+    #   * Przez te dwa goldpiny plynalby CALY prad systemu. Zwieracz
+    #     goldpinowy to stycznosc sprezynowa o rezystancji, ktorej nikt
+    #     nie specyfikuje, w szeregu z szyna zasilajaca procesor i
+    #     nadajnik. Przy skokach pradu radia to najgorsze mozliwe
+    #     miejsce na zlacze rozlaczalne.
+    #   * Dwa otwory 1,0 mm w szynie, ktora chce byc plaszczyzna -
+    #     a tutaj plaszczyzna zasilania to cale In2.
+    #
+    # Pomiar poboru pradu nie ginie, tylko zmienia narzedzie: na plytce
+    # siedzi BQ27441 z bocznikiem 10 mOhm i mierzy prad ogniwa na biezaco,
+    # po I2C, bez rozlaczania czegokolwiek. To lepszy pomiar niz
+    # amperomierz w przerwie, bo widzi takze szpilki, ktorych multimetr
+    # nie zdazy pokazac. A jesli trzeba miernika, zostaja pady pomiarowe
+    # po obu stronach bocznika.
+    buck_boost.power_out.hv ~ power_3v3.hv
+    buck_boost.power_out.lv ~ power_3v3.lv

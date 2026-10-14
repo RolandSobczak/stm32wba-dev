@@ -1,0 +1,64 @@
+import has_designator_prefix
+import has_part_picked
+import is_atomic_part
+import is_auto_generated
+
+component STMicroelectronics_STM32WB55CGU6_package:
+    # This trait marks this file as auto-generated
+    # If you want to manually change it, remove the trait
+    trait is_auto_generated<system="ato_part", source="easyeda:C404023", date="2026-10-01T22:07:05.239753+00:00", checksum="9dc332add717e149f97c5f55ba750c50b1317b9c5abb7c5238a6b62fdb4612d3">
+
+    trait is_atomic_part<manufacturer="STMicroelectronics", partnumber="STM32WB55CGU6", footprint="VQFN-48_L7.0-W7.0-P0.50-BL-EP5.5.kicad_mod", symbol="STM32WB55CGU6.kicad_sym", model="VQFN-48_L7.0-W7.0-P0.50-BL-EP5.5.step">
+    trait has_part_picked::by_supplier<supplier_id="lcsc", supplier_partno="C404023", manufacturer="STMicroelectronics", partno="STM32WB55CGU6">
+    trait has_designator_prefix<prefix="U">
+
+    # pins
+    signal AT0 ~ pin 26
+    signal AT1 ~ pin 27
+    signal EP ~ pin 49
+    signal NRST ~ pin 7
+    signal OSC_IN ~ pin 25
+    signal OSC_OUT ~ pin 24
+    signal PA0 ~ pin 9
+    signal PA1 ~ pin 10
+    signal PA2 ~ pin 11
+    signal PA3 ~ pin 12
+    signal PA4 ~ pin 13
+    signal PA5 ~ pin 14
+    signal PA6 ~ pin 15
+    signal PA7 ~ pin 16
+    signal PA8 ~ pin 17
+    signal PA9 ~ pin 18
+    signal PA10 ~ pin 36
+    signal PA11 ~ pin 37
+    signal PA12 ~ pin 38
+    signal PA13 ~ pin 39
+    signal PA14 ~ pin 41
+    signal PA15 ~ pin 42
+    signal PB0 ~ pin 28
+    signal PB1 ~ pin 29
+    signal PB2 ~ pin 19
+    signal PB3 ~ pin 43
+    signal PB4 ~ pin 44
+    signal PB5 ~ pin 45
+    signal PB6 ~ pin 46
+    signal PB7 ~ pin 47
+    signal PB8 ~ pin 5
+    signal PB9 ~ pin 6
+    signal PC14_OSC32_IN ~ pin 2
+    signal PC15_OSC32_OUT ~ pin 3
+    signal PE4 ~ pin 30
+    signal PH3_BOOT0 ~ pin 4
+    signal RF1 ~ pin 21
+    signal VBAT ~ pin 1
+    signal VDD ~ pin 20
+    VDD ~ pin 35
+    VDD ~ pin 48
+    signal VDDA ~ pin 8
+    signal VDDRF ~ pin 23
+    signal VDDSMPS ~ pin 34
+    signal VDDUSB ~ pin 40
+    signal VFBSMPS ~ pin 31
+    signal VLXSMPS ~ pin 33
+    signal VSSRF ~ pin 22
+    signal VSSSMPS ~ pin 32

@@ -1,0 +1,32 @@
+import has_designator_prefix
+import has_part_picked
+import is_atomic_part
+import is_auto_generated
+
+component Global_Connector_Technology_USB4085_GF_A_package:
+    # This trait marks this file as auto-generated
+    # If you want to manually change it, remove the trait
+    trait is_auto_generated<system="ato_part", source="easyeda:C7095263", date="2026-08-22T10:16:28.230510+00:00", checksum="26d3d00cf9cf20595d443ba2d02072e759aa0c44c414b98a41e6ce2ef4c99269">
+
+    trait is_atomic_part<manufacturer="Global Connector Technology", partnumber="USB4085-GF-A", footprint="USC-C-SMD_USB4085-GF-A.kicad_mod", symbol="USB4085-GF-A_C7095263.kicad_sym", model="USC-C-SMD_USB4085-GF-A.step">
+    trait has_part_picked::by_supplier<supplier_id="lcsc", supplier_partno="C7095263", manufacturer="Global Connector Technology", partno="USB4085-GF-A">
+    trait has_designator_prefix<prefix="USB">
+
+    # pins
+    signal CC1 ~ pin A5
+    signal CC2 ~ pin B5
+    signal Dn1 ~ pin A7
+    signal Dn2 ~ pin B7
+    signal Dp1 ~ pin A6
+    signal Dp2 ~ pin B6
+    signal GND ~ pin A1
+    GND ~ pin A12
+    GND ~ pin B1
+    GND ~ pin B12
+    signal SIG_S1 ~ pin S1
+    signal SBU1 ~ pin A8
+    signal SBU2 ~ pin B8
+    signal VBUS ~ pin A4
+    VBUS ~ pin A9
+    VBUS ~ pin B4
+    VBUS ~ pin B9

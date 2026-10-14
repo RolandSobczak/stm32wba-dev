@@ -1,0 +1,24 @@
+import has_designator_prefix
+import has_part_picked
+import is_atomic_part
+
+component STMicroelectronics_USBLC6_2SC6_package:
+    """ST USBLC6-2SC6 (SOT-23-6L) - ochrona ESD dwoch linii USB 2.0.
+
+    Nazwy pinow z karty katalogowej; wygenerowany plik mial tylko gole
+    numery. Piny 1 i 6 to ten sam wezel I/O1 (tak samo 3 i 4 dla I/O2) -
+    uklad jest pomyslany tak, zeby sciezke danych PRZEPROWADZIC przez
+    obudowe: wejscie od gniazda na jednej stronie, wyjscie do MCU na
+    drugiej. Dzieki temu nie ma odgalezienia (stub) na linii roznicowej.
+    """
+    trait is_atomic_part<manufacturer="STMicroelectronics", partnumber="USBLC6-2SC6", footprint="SOT-23-6_L2.9-W1.6-P0.95-LS2.8-BL.kicad_mod", symbol="USBLC6-2SC6.kicad_sym", model="SOT-23-6_L2.9-W1.6-H1.5-LS2.8-P0.95.step">
+    trait has_part_picked::by_supplier<supplier_id="lcsc", supplier_partno="C7519", manufacturer="STMicroelectronics", partno="USBLC6-2SC6">
+    trait has_designator_prefix<prefix="D">
+
+    # pins
+    signal IO1_conn ~ pin 1
+    signal GND ~ pin 2
+    signal IO2_conn ~ pin 3
+    signal IO2_mcu ~ pin 4
+    signal VBUS ~ pin 5
+    signal IO1_mcu ~ pin 6

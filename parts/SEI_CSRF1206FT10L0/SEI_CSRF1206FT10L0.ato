@@ -1,0 +1,17 @@
+import has_designator_prefix
+import has_part_picked
+import is_atomic_part
+import is_auto_generated
+
+component SEI_CSRF1206FT10L0_package:
+    # This trait marks this file as auto-generated
+    # If you want to manually change it, remove the trait
+    trait is_auto_generated<system="ato_part", source="easyeda:C346479", date="2026-10-01T22:45:21.888731+00:00", checksum="2d9c2c704b92a342a8d9c4f75611b48619d43493692b94841618066890f062a5">
+
+    trait is_atomic_part<manufacturer="SEI", partnumber="CSRF1206FT10L0", footprint="R1206.kicad_mod", symbol="CSRF1206FT10L0.kicad_sym", model="R1206_L3.2-W1.6-H0.6.step">
+    trait has_part_picked::by_supplier<supplier_id="lcsc", supplier_partno="C346479", manufacturer="SEI", partno="CSRF1206FT10L0">
+    trait has_designator_prefix<prefix="R">
+
+    # pins
+    pin 1
+    pin 2

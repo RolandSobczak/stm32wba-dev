@@ -1,0 +1,165 @@
+"""Dev board na STM32WB55 - najmniejszy prostokat z pelnym torem zasilania.
+
+    USB-C ──▶ BQ25896 ──┬──▶ SYS ──▶ TPS63020 ──▶ 3V3 ──┬──▶ STM32WB55CGU6 ──▶ MLPF ──▶ antena PCB
+      │  (Rd 5.1k + ADC) │                              │        │
+      └── D+/D- ─────────│──────────────────────────────│────────┘
+                         └──▶ Li-Po 1S                  ├──▶ SD NAND 2 Gbit (SPI1)
+                              │                         │
+                              └──▶ BQ27441 (gauge)      └──▶ dwie listwy 1x12 (2,54 mm)
+                                      │
+                                      └── I2C1 ─────────────────┘
+
+Plytka jest jedna, prostokatna, z otworami M3 w czterech rogach i antena
+w laminacie. Nie ma zlacza miedzyplytkowego, ekranu, GNSS-u ani drugiego
+radia - wszystko, co w `gps_tracker-6l` wymagalo szesciu warstw i kanapki
+z dwoch plytek, tutaj nie wystepuje.
+
+Co jest przeniesione z trackera, a co nowe
+------------------------------------------
+Przeniesione prawie bez zmian: **caly tor zasilania** (`power.ato` - to
+samo gniazdo USB-C, ta sama ladowarka BQ25896 z NVDC, ten sam gauge
+z bocznikiem po stronie dodatniej, ta sama przetwornica buck-boost, ta
+sama zlaczka Molex PicoBlade, czyli ten sam pakiet ogniwa wchodzi w obie
+plytki) oraz **stos czterowarstwowy** z `tools/board_setup.py`.
+
+Nowe: procesor (`mcu.ato`), pamiec (`storage.ato`), listwy
+(`headers.ato`) i antena.
+
+Jedyna zmiana w torze zasilania dotyczy CC gniazda USB-C i wynika
+z procesora: STM32WB55 nie ma UCPD, wiec Rd 5.1k wraca na plytke, a prad
+zrodla odczytuje sie przetwornikiem. Uzasadnienie w naglowku `power.ato`.
+
+Stos i rozmieszczenie
+---------------------
+Cztery warstwy: **F.Cu elementy i sygnaly krytyczne / In1 masa / In2
+zasilanie / B.Cu sygnaly i wylewka masy**. To nie jest wybor estetyczny -
+AN5165 par. 4.3 opisuje dokladnie taki uklad dla plytek RF na czterech
+warstwach, a dodatkowo masa 0,2104 mm pod F.Cu jest warstwa odniesienia,
+wzgledem ktorej liczy sie tor 50 om (wychodzi 0,3884 mm szerokosci).
+
+Z tego wynika rozmieszczenie:
+  * **Procesor, oba kwarce, cewka SMPS i cala droga RF stoja na F.Cu**,
+    nad lita masa In1. Tak kaze AN5165: "TOP layer: components and
+    critical signals (for example, RF, XTAL, SMPS)".
+  * **Antena na krotszej krawedzi**, wysrodkowana miedzy gornymi otworami
+    M3, zwrocona na zewnatrz. Pod nia i wokol niej - strefa bez miedzi na
+    wszystkich czterech warstwach.
+  * **MLPF tuz przy procesorze**, a odcinek 50 om od niego do anteny tak
+    krotki, jak wyjdzie. AN5165 par. 7 konczy sie wprost ta uwaga.
+  * **USB-C i zlaczka ogniwa na przeciwnej krotszej krawedzi** - najdalej
+    od anteny, jak pozwala plytka. Przewody wychodza z tej samej strony,
+    wiec nie kladzie sie ich nad radiatorem.
+  * **Listwy wzdluz dluzszych krawedzi.** Ich otwory 1,0 mm przechodza
+    przez obie plaszczyzny, wiec rzad goldpinow jest jednoczesnie rzedem
+    dziur w masie i zasilaniu - stad odstep wylewki 0,2 mm zamiast 0,5
+    (`tools/board_setup.py`).
+  * **Masa procesora jest tylko na padzie pod obudowa** (UFQFPN-48 nie ma
+    ani jednej nozki VSS), wiec ten pad musi dostac siatke przelotek do
+    In1, a nie jedna przelotke w srodku.
+"""
+
+#pragma experiment("BRIDGE_CONNECT")
+
+import Electrical
+from "power.ato" import PowerStack
+from "mcu.ato" import Stm32Wb55
+from "storage.ato" import SdNandSpi
+from "headers.ato" import PowerDebugHeader
+from "headers.ato" import GpioHeader
+from "parts/Antenna_IFA_2G4/Antenna_IFA_2G4.ato" import Antenna_IFA_2G4_package
+from "parts/TestPoint_Pad_D1R5/TestPoint_Pad_D1R5.ato" import TestPoint_Pad_D1R5_package
+
+
+module ProbePoint:
+    """Goly pad SMD 1,5 mm pod sonde z koncowka iglowa.
+
+    Przeniesiony z `gps_tracker-6l/debug.ato`. Tam byl jedynym sposobem
+    dotkniecia czegokolwiek w zlozonej kanapce; tutaj plytka jest otwarta,
+    ale wezly, ktore nie wychodza na listwe - obie strony bocznika,
+    termistor - nadal nie maja innego dojscia.
+    """
+    pad = new TestPoint_Pad_D1R5_package
+    node = new Electrical
+    node ~ pad.p1
+
+
+module DevBoard:
+    power = new PowerStack
+    mcu = new Stm32Wb55
+    storage = new SdNandSpi
+    hdr_power = new PowerDebugHeader
+    hdr_gpio = new GpioHeader
+    antenna = new Antenna_IFA_2G4_package
+
+    # ─── Szyna 3V3 ───
+    power.power_3v3 ~ mcu.power
+    power.power_3v3 ~ storage.power
+    power.power_3v3 ~ hdr_power.power
+    power.power_3v3 ~ hdr_gpio.power
+
+    # ─── USB-C: dane i oba wezly CC ───
+    power.usb_port.usb2 ~ mcu.usb
+    power.cc1 ~ mcu.cc1
+    power.cc2 ~ mcu.cc2
+
+    # ─── Zasilanie: I2C1 i piec linii statusu ───
+    mcu.pmic_i2c ~ power.pmic_i2c
+    mcu.charger_enable ~ power.charger.charge_enable
+    mcu.charger_interrupt ~ power.charger.interrupt
+    mcu.charger_power_good ~ power.charger.power_good
+    mcu.charger_charging ~ power.charger.charging
+    mcu.gauge_interrupt ~ power.gauge.soc_interrupt
+
+    # ─── Pamiec ───
+    mcu.sd_spi ~ storage.spi
+
+    # ─── Antena ───
+    # Miedzy `MLPF.OUT` a tym padem jest JEDYNY na plytce odcinek linii
+    # 50 om. Jego szerokosc (0,3884 mm nad masa In1) ustawia klasa sieci
+    # w `tools/board_setup.py`; jego dlugosc ma byc najkrotsza, jaka
+    # pozwoli rozmieszczenie.
+    net_ant = new Electrical
+    net_ant.override_net_name = "ANT"
+    mcu.antenna ~ net_ant
+    net_ant ~ antenna.FEED
+
+    # Zwieracz anteny na mase. W netliscie wyglada to na zwarcie ANT-GND
+    # i tak jest naprawde - taka jest definicja anteny typu F. Footprint
+    # deklaruje `net_tie_pad_groups`, wiec DRC tego nie zglasza.
+    antenna.GND ~ power.power_3v3.lv
+
+    # ─── Listwy ───
+    hdr_power.vbus ~ power.usb_port.vbus.hv
+    hdr_power.sys ~ power.power_sys.hv
+    hdr_power.swd ~ mcu.swd
+    hdr_power.reset ~ mcu.reset
+    hdr_power.boot0 ~ mcu.boot0
+
+    # Dziewiec wolnych nozek. Kolejnosc musi zgadzac sie z tablica
+    # w `mcu.ato` - obie opisuja ten sam ciag. Wypisane po jednej, bo
+    # to jedyna postac, w ktorej widac obie strony naraz: po lewej
+    # pozycja na listwie, po prawej nozka procesora.
+    hdr_gpio.spare[0] ~ mcu.spare[0]    # listwa 2  <- PA2
+    hdr_gpio.spare[1] ~ mcu.spare[1]    # listwa 3  <- PA3
+    hdr_gpio.spare[2] ~ mcu.spare[2]    # listwa 4  <- PA8
+    hdr_gpio.spare[3] ~ mcu.spare[3]    # listwa 5  <- PA9
+    hdr_gpio.spare[4] ~ mcu.spare[4]    # listwa 6  <- PA10
+    hdr_gpio.spare[5] ~ mcu.spare[5]    # listwa 7  <- PA15
+    hdr_gpio.spare[6] ~ mcu.spare[6]    # listwa 8  <- PB5
+    hdr_gpio.spare[7] ~ mcu.spare[7]    # listwa 9  <- PB6
+    hdr_gpio.spare[8] ~ mcu.spare[8]    # listwa 10 <- PB7
+
+    # ─── Punkty pomiarowe ───
+    # Tylko te wezly, ktorych nie ma na listwach. Reszty dotyka sie
+    # goldpinem, a nie padem.
+    tp_vbat = new ProbePoint        # plus ogniwa, PRZED bocznikiem
+    tp_vbat_chg = new ProbePoint    # BAT ladowarki, ZA bocznikiem
+    tp_ntc = new ProbePoint         # termistor pakietu
+    tp_gnd = new ProbePoint         # masa przy przetwornicach
+
+    # Dwie strony bocznika osobno - roznica miedzy nimi to caly pomiar
+    # pradu ogniwa, wiec musza dac sie zmierzyc niezaleznie.
+    tp_vbat.node ~ power.vbat_pack
+    tp_vbat_chg.node ~ power.vbat_charger
+    tp_ntc.node ~ power.thermistor
+    tp_gnd.node ~ power.power_3v3.lv

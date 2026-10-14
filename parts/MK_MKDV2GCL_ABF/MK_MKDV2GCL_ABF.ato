@@ -1,0 +1,45 @@
+import has_designator_prefix
+import has_part_picked
+import is_atomic_part
+import is_auto_generated
+
+component MK_MKDV2GCL_ABF_package:
+    """MK MKDV2GCL-ABF - 2 Gbit SD NAND, LGA-8 8,0 x 6,0 x 0,9 mm.
+
+    Pamiec masowa wlutowana na stale, zamiast gniazda karty. Na plytce
+    o tym rozmiarze korytarz na wysuwana karte kosztowalby wiecej
+    powierzchni niz caly uklad razem z odsprzeganiem, a dev board nie
+    potrzebuje wyjmowac nosnika - log wychodzi po SWO i po USB.
+
+    **Pracuje w trybie SPI, nie SD.** Nie z wyboru: STM32WB55 nie ma
+    peryferialu SDMMC w ogole (lista IP w `STM32WB55CGUx.xml` - jest
+    QUADSPI, SPI1, SAI1, USB, nie ma SDMMC). Karta katalogowa dopuszcza
+    tryb SPI wprost: host sciaga `DAT3` (CD) do zera przy inicjalizacji
+    i dalej jedzie CLK / CMD jako MOSI / DAT0 jako MISO / DAT3 jako CS.
+    `DAT1` i `DAT2` nie sa w tym trybie uzywane i zostaja bez sieci.
+
+    Footprint NIE jest tym, ktory przyszedl z EasyEDA (dostalismy wzorzec
+    od wersji 1 Gbit, `MKDV1GCL-ABB`, z padami konczacymi sie POD obudowa).
+    Stoi tu `LGA-8_MKDV_handsolder` przeniesiony z `gps_tracker-6l`: pady
+    1,7 x 0,8 mm w osi +/-3,700, wychodzace 0,55 mm POZA obudowe. Ta sama
+    obudowa dla 1 / 2 / 4 Gbit (D = 8,0, E = 6,0, D1 = 6,850, E1 = 3,810,
+    raster 1,27), tylko dluzszy nosek - jest co obejrzec i jest gdzie
+    dotknac grotem. Przy montazu recznym to warunek, nie wygoda.
+    """
+    # This trait marks this file as auto-generated
+    # If you want to manually change it, remove the trait
+    trait is_auto_generated<system="ato_part", source="easyeda:C51966231", date="2026-10-01T22:07:10.489884+00:00", checksum="9a0f1576f47f29ac6c274c618d6202328fe2190795ce342a0176a3c601cf8359">
+
+    trait is_atomic_part<manufacturer="MK", partnumber="MKDV2GCL-ABF", footprint="LGA-8_MKDV_handsolder.kicad_mod", symbol="MKDV2GCL-ABF.kicad_sym", model="LGA-8_L8.0-W6.0-P1.27-TL_MKDV4GCL-ABF.STEP">
+    trait has_part_picked::by_supplier<supplier_id="lcsc", supplier_partno="C51966231", manufacturer="MK", partno="MKDV2GCL-ABF">
+    trait has_designator_prefix<prefix="U">
+
+    # pins
+    signal CLK ~ pin 3
+    signal CMD ~ pin 5
+    signal DAT0 ~ pin 6
+    signal DAT1 ~ pin 7
+    signal DAT2 ~ pin 1
+    signal DAT3 ~ pin 2
+    signal GND ~ pin 4
+    signal VDD ~ pin 8

@@ -1,0 +1,19 @@
+import has_designator_prefix
+import has_part_picked
+import is_atomic_part
+import is_auto_generated
+
+component MOLEX_532610371_package:
+
+    trait is_atomic_part<manufacturer="MOLEX", partnumber="532610371", footprint="532610371_Molex_PicoBlade_3Pin_1_25.kicad_mod", symbol="532610371.kicad_sym", model="53261-0371.STEP">
+    trait has_part_picked::by_supplier<supplier_id="lcsc", supplier_partno="C293630", manufacturer="MOLEX", partno="532610371">
+    trait has_designator_prefix<prefix="U">
+
+    # pins
+    # Gniazdo pod ogniwo AKYGA LP953450 (kabel: Molex PicoBlade 51021-0300).
+    # Piny 4 i 5 to kotwy lutownicze - mechaniczne, elektrycznie na masie.
+    signal BATP ~ pin 1
+    signal BATN ~ pin 2
+    signal NTC ~ pin 3
+    signal SHELL ~ pin 4
+    SHELL ~ pin 5

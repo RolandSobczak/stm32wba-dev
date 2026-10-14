@@ -1,0 +1,133 @@
+"""Dwie listwy goldpinow 1x12 - caly interfejs tej plytki do swiata.
+
+To jest dev board, wiec listwy nie sa dodatkiem, tylko produktem. Reszta
+plytki istnieje po to, zeby na tych dwudziestu czterech nozkach bylo
+zasilanie, programowanie i dziewiec wolnych wyprowadzen procesora.
+
+Dlaczego dwanascie na stronie
+-----------------------------
+Liczba wyszla z rachunku, nie z okraglosci. STM32WB55CGU6 ma **30 nozek
+I/O** i wszystkie sa rozdane:
+
+    SWD                 PA13, PA14, PB3                         3
+    USB FS              PA11, PA12                              2
+    LSE 32,768 kHz      PC14, PC15                              2
+    BOOT0               PH3                                     1
+    SD NAND (SPI1)      PA4, PA5, PA6, PA7                      4
+    I2C1 zasilania      PB8, PB9                                2
+    statusy PMIC        PB0, PB1, PB2, PB4, PE4                 5
+    pomiar CC           PA0, PA1                                2
+    ---------------------------------------------------------------
+    zajete                                                     21
+    **wolne**           PA2 PA3 PA8 PA9 PA10 PA15 PB5 PB6 PB7    9
+
+Dziewiec wolnych plus +3V3 i dwie masy to dwanascie pozycji - stad prawa
+listwa. Lewa ma tyle samo, bo listwy stoja naprzeciw siebie wzdluz
+dluzszych krawedzi i rowna dlugosc jest tu warta wiecej niz zaoszczedzona
+nozka: plytka wchodzi wtedy w plytke stykowa prosto, a nie skosem.
+
+Gdyby kiedys trzeba bylo wiecej wolnych nozek, pierwsze do odzyskania sa
+**/PG i STAT** - oba stany czyta sie takze po I2C z rejestru REG0B
+BQ25896, a /INT i tak zglasza kazda zmiane. Zostaly tu osobnymi liniami
+swiadomie, bo na dev boardzie chce sie widziec oscyloskopem, kiedy
+ladowarka zmienia stan, a nie dowiadywac sie o tym z odczytu rejestru.
+
+Co jest na ktorej listwie
+-------------------------
+Podzial jest taki, zeby kazda z listew dalo sie uzywac osobno: po lewej
+wszystko, czego trzeba, zeby plytke uruchomic, po prawej wszystko, czego
+trzeba, zeby ja do czegos podlaczyc.
+
+    LEWA (zasilanie + uruchamianie)     PRAWA (wolne nozki)
+     1  VBUS      z gniazda USB-C        1  +3V3
+     2  SYS       szyna z ladowarki      2  PA2   LPUART1_TX / ADC_IN7
+     3  +3V3                             3  PA3   LPUART1_RX / ADC_IN8
+     4  GND                              4  PA8   TIM1_CH1 / ADC_IN15 / MCO
+     5  NRST                             5  PA9   USART1_TX / ADC_IN16
+     6  SWDIO                            6  PA10  USART1_RX
+     7  GND                              7  PA15  TIM2_CH1
+     8  SWCLK                            8  PB5   LPUART1_TX / SPI1_MOSI
+     9  SWO                              9  PB6   I2C1_SCL / USART1_TX
+    10  GND                             10  PB7   I2C1_SDA / USART1_RX
+    11  BOOT0                           11  GND
+    12  GND                             12  GND
+
+**Masy miedzy szybkimi liniami, a nie na koncu listwy.** Pin 7 lezy
+miedzy SWDIO i SWCLK, pin 10 miedzy SWCLK a SWO - kazda z trzech szybkich
+linii ma droge powrotna w sasiednim przewodzie tasiemki. To ten sam
+argument, dla ktorego `gps_tracker-6l/debug.ato` wybral standardowe
+zlacze ARM 2x5 zamiast wlasnego ukladu pinow, i ma znaczenie przede
+wszystkim dla SWO: tedy idzie konsola ITM i to od drogi powrotnej zalezy,
+przy jakiej czestotliwosci strumien przestaje sie sypac.
+
+**BOOT0 sasiaduje z +3V3 przez trzy pozycje, nie przez jedna.** Wejscie
+w bootloader to zworka z pinu 11 na pin 3. Gdyby lezaly obok siebie,
+przypadkowa kropla cyny albo krzywo wlozony zwieracz wprowadzalby plytke
+w DFU przy kazdym resecie - a to objaw, ktorego nie widac, dopoki nie
+zacznie sie szukac, czemu program nie startuje.
+
+**VBUS i SYS sa wyprowadzone, ale nie sa wejsciami zasilania.** VBUS
+sluzy do sprawdzenia miernikiem, czy kabel cos podaje; SYS - do podpiecia
+czegos, co ma sie zasilac przed przetwornica 3V3 (szyna 3,0-4,6 V prosto
+z NVDC ladowarki). Podanie na ktorykolwiek z nich napiecia z zewnatrz
+oznacza wepchniecie go w wyjscie przetwornicy w BQ25896.
+"""
+
+#pragma experiment("BRIDGE_CONNECT")
+
+import ElectricPower
+import ElectricLogic
+import Electrical
+import SWD
+from "parts/PinHeader_1x12/PinHeader_1x12.ato" import PinHeader_1x12_package
+
+
+module PowerDebugHeader:
+    """Lewa listwa: zasilanie, SWD, reset i BOOT0."""
+    conn = new PinHeader_1x12_package
+
+    power = new ElectricPower        # +3V3 i masa
+    vbus = new Electrical            # z gniazda USB-C
+    sys = new Electrical             # szyna SYS z ladowarki
+    swd = new SWD
+    reset = new ElectricLogic
+    boot0 = new ElectricLogic
+
+    conn.p1 ~ vbus
+    conn.p2 ~ sys
+    conn.p3 ~ power.hv
+    conn.p4 ~ power.lv
+    conn.p5 ~ reset.line
+    conn.p6 ~ swd.dio.line
+    conn.p7 ~ power.lv
+    conn.p8 ~ swd.clk.line
+    conn.p9 ~ swd.swo.line
+    conn.p10 ~ power.lv
+    conn.p11 ~ boot0.line
+    conn.p12 ~ power.lv
+
+
+module GpioHeader:
+    """Prawa listwa: dziewiec wolnych nozek procesora, zasilanie i masa.
+
+    Kolejnosc `spare[0..8]` jest ta sama, co w `mcu.ato` - obie listy
+    opisuja ten sam ciag nozek i rozjechanie sie ich byloby bledem
+    niewidocznym az do pierwszego pomiaru.
+    """
+    conn = new PinHeader_1x12_package
+
+    power = new ElectricPower
+    spare = new Electrical[9]
+
+    conn.p1 ~ power.hv
+    conn.p2 ~ spare[0]    # PA2
+    conn.p3 ~ spare[1]    # PA3
+    conn.p4 ~ spare[2]    # PA8
+    conn.p5 ~ spare[3]    # PA9
+    conn.p6 ~ spare[4]    # PA10
+    conn.p7 ~ spare[5]    # PA15
+    conn.p8 ~ spare[6]    # PB5
+    conn.p9 ~ spare[7]    # PB6
+    conn.p10 ~ spare[8]   # PB7
+    conn.p11 ~ power.lv
+    conn.p12 ~ power.lv

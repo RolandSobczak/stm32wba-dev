@@ -1,0 +1,568 @@
+"""Mikrokontroler, jego obwod minimalny i tor RF do anteny.
+
+STM32WB55CGU6 - Cortex-M4 64 MHz + Cortex-M0+ (radio), 1 MB Flash,
+256 kB SRAM, Bluetooth 5.x i 802.15.4, UFQFPN-48 7 x 7 mm, raster 0,5 mm.
+
+Skad wzielo sie przypisanie wyprowadzen
+---------------------------------------
+Z tego samego zrodla co w `gps_tracker-6l/mcu.ato`, i z tego samego powodu:
+`st.com` jest z tej maszyny nieosiagalny, a tekst wyciagniety z PDF-a raz
+juz w tym projekcie sklamal (rewizja 1 trackera zgubila przy konwersji
+wiersze i wyszly z tego dwa falszywe wnioski o pinach). Zrodlem jest wiec:
+
+  * `STM32_open_pin_data/mcu/STM32WB55CGUx.xml` - oficjalne repozytorium
+    ST, pelna lista 48 wyprowadzen i wszystkich funkcji kazdego z nich.
+
+Z tego pliku wynikaja takze dwie rzeczy, ktorych nie widac w schemacie:
+
+**Ten uklad ma 30 wyprowadzen I/O. Wszystkie 30 sa tu rozdane.**
+48 nozek minus 18 zasilajacych i specjalnych (VBAT, VDDA, trzy VDD, VDDUSB,
+VDDRF, VSSRF, cztery SMPS, NRST, RF1, OSC_IN, OSC_OUT, AT0, AT1). Nie ma
+tu ani jednej nozki "na zapas" - kazda zmiana w peryferiach oznacza, ze
+cos innego musi ustapic. Budzet jest w naglowku `headers.ato`.
+
+**Masa jest TYLKO na padzie pod obudowa.** W UFQFPN-48 nie ma ani jednego
+pinu VSS na krawedzi; `ic.EP` to jedyne polaczenie ukladu z masa. Nie jest
+to wiec "pad termiczny, dobrze byloby go przylutowac" - bez niego uklad nie
+ma masy w ogole. Dla layoutu znaczy to: pad musi dostac siatke przelotek do
+In1, a nie jedna w srodku.
+
+Zegar
+-----
+**HSE 32 MHz jest obowiazkowe i nie ma od niego ucieczki** - radio nie
+umie pracowac z niczego innego. To jedyna czestotliwosc, jaka wchodzi
+w gre (datasheet DS11929, Figure 4: "X1 32 MHz"), a dokladnosc kwarcu jest
+warunkiem zgodnosci z Bluetooth, nie kwestia jakosci.
+
+**Przy tym kwarcu NIE MA kondensatorow obciazenia** i to jest najwazniejsza
+roznica wobec trackera, bo jest niewidoczna: tam HSE mial dwa 12 pF, tutaj
+ich brak jest celowy. DS11929 par. 3.6: "an external 32 MHz crystal that
+does not need any external trimming capacitor network thanks to a dual
+network of user programmable integrated capacitors". Banka wewnetrzna
+(XOTUNE, 6 bitow, zakres +/-40 ppm) zastepuje je i jeszcze pozwala
+dostroic czestotliwosc po pomiarze. Dolozenie tu dwoch 12 pF przesunieloby
+oscylator poza zakres strojenia - czyli zepsulo radio w sposob, ktory
+wyglada jak zly uklad, a nie jak zly schemat.
+
+LSE 32,768 kHz zostaje z trackera razem z rezystorem 0 R. Przy BLE nie
+jest ozdoba: stos radiowy odmierza nim okna rozglaszania i polaczenia
+w trybach niskiego poboru.
+
+Tor RF
+------
+RF1 (nozka 21) nie idzie do anteny wprost. Miedzy nimi stoi **jedna**
+czesc: `MLPF-WB55-01E3`, scalona siec dopasowania ST razem z filtrem
+harmonicznych, 1,6 x 1,0 mm. AN5165 par. 7 pokazuje, co zastepuje:
+kondensator 0,8 pF, cewke 2,7 nH, kondensator 0,3 pF i osobny scalony
+filtr dolnoprzepustowy - przy rownowaznych parametrach TX/RX.
+
+Przy dyskretnej wersji trzeba by dobierac 0,3 pF i 0,8 pF, czyli wartosci
+tego samego rzedu, co pasozyty padow i sciezek, a potem je mierzyc.
+Tutaj nie ma czego dobierac. Balun jest w srodku procesora (transformator
+na wyprowadzeniach RF - DS11929 par. 3.5), wiec miedzy MLPF i antena
+zostaje jeden odcinek linii 50 om.
+
+Co jest gdzie
+-------------
+    SWD         PA13 SWDIO / PA14 SWCLK / PB3 SWO + NRST
+    USB FS      PA11 DM / PA12 DP
+    SD NAND     SPI1 na PA5/PA6/PA7, CS na PA4 (GPIO)
+    zasilanie   I2C1 na PB8/PB9 (ladowarka 0x6B, gauge 0x55)
+    statusy     PB1 /CE, PB0 /INT, PE4 /PG, PB2 STAT, PB4 GPOUT gauge'a
+    USB-C CC    PA0 (ADC_IN5) i PA1 (ADC_IN6)
+    wolne       PA2 PA3 PA8 PA9 PA10 PA15 PB5 PB6 PB7  -> `headers.ato`
+    BOOT0       PH3, sciagniety do masy
+    kwarce      OSC_IN/OSC_OUT 32 MHz, PC14/PC15 32,768 kHz
+
+SPI1 trafil na zwarty blok PA4..PA7 nie z wygody: pozostale warianty tego
+peryferialu koliduja z czyms, czego nie da sie przeniesc. `SPI1_SCK` jest
+jeszcze na PA1 i PB3 (PB3 to SWO), `SPI1_MISO` na PA11 i PB4 (PA11 to
+USB_DM), `SPI1_MOSI` na PA12 i PB5 (PA12 to USB_DP). PA4..PA7 to jedyny
+uklad, w ktorym cztery linie SD NAND-a leza obok siebie i nie zabieraja
+nic z SWD ani z USB.
+
+CC ladowarki musialy trafic w PA0/PA1, bo kanaly ADC1 sa tylko na
+PA0..PA9, a PA4..PA7 zajmuje SPI1.
+"""
+
+#pragma experiment("BRIDGE_CONNECT")
+#pragma experiment("FOR_LOOP")
+
+import ElectricPower
+import ElectricLogic
+import Electrical
+import Capacitor
+import Resistor
+import Inductor
+import I2C
+import SWD
+import USB2_0
+from "interfaces.ato" import SpiWithCs
+from "parts/STMicroelectronics_STM32WB55CGU6/STMicroelectronics_STM32WB55CGU6.ato" import STMicroelectronics_STM32WB55CGU6_package
+from "parts/STMicroelectronics_MLPF_WB55_01E3/STMicroelectronics_MLPF_WB55_01E3.ato" import STMicroelectronics_MLPF_WB55_01E3_package
+from "parts/NDK_NX2016SA_32MHZ_EXS00A_CS06654/NDK_NX2016SA_32MHZ_EXS00A_CS06654.ato" import NDK_NX2016SA_32MHZ_EXS00A_CS06654_package
+from "parts/Abracon_LLC_ABS07_32_768KHZ_9_T/Abracon_LLC_ABS07_32_768KHZ_9_T.ato" import Abracon_LLC_ABS07_32_768KHZ_9_T_package
+
+
+module Stm32Wb55:
+    """STM32WB55CGU6 z obwodem minimalnym, SMPS, kwarcami i torem RF."""
+    ic = new STMicroelectronics_STM32WB55CGU6_package
+
+    power = new ElectricPower        # +3V3: VDD x3, VDDA, VDDRF, VDDSMPS, VDDUSB, VBAT
+    reset = new ElectricLogic
+    boot0 = new ElectricLogic
+    swd = new SWD
+    usb = new USB2_0
+
+    # ─── Zasilanie plytki: I2C1 + piec linii statusu ───
+    pmic_i2c = new I2C
+    charger_enable = new ElectricLogic      # /CE  - nisko wlacza ladowanie
+    charger_interrupt = new ElectricLogic   # /INT - impuls przy zmianie i awarii
+    charger_power_good = new ElectricLogic  # /PG  - nisko = zrodlo dobre
+    charger_charging = new ElectricLogic    # STAT - nisko = ladowanie trwa
+    gauge_interrupt = new ElectricLogic     # GPOUT gauge'a
+
+    # ─── USB-C: oba wezly CC na przetwornik ───
+    cc1 = new Electrical
+    cc2 = new Electrical
+
+    # ─── Pamiec masowa ───
+    sd_spi = new SpiWithCs
+
+    # ─── Antena ───
+    # Wyjscie MLPF, czyli punkt o impedancji 50 om. Dalej jest tylko
+    # odcinek linii i antena - patrz `dev.ato`.
+    antenna = new Electrical
+
+    # ─── Wolne wyprowadzenia na listwe ───
+    # Kolejnosc jest ta sama, co na listwie w `headers.ato`, i to jest
+    # jedyne miejsce, w ktorym numer indeksu znaczy cos konkretnego.
+    #   0 PA2   1 PA3   2 PA8   3 PA9   4 PA10
+    #   5 PA15  6 PB5   7 PB6   8 PB7
+    spare = new Electrical[9]
+
+    assert power.voltage within 1.71V to 3.6V
+
+    # ════════════════════════════════════════════════════════════
+    #  Zasilanie
+    # ════════════════════════════════════════════════════════════
+    # VDD to trzy nozki (20, 35, 48) zwarte w jeden sygnal w pliku czesci.
+    ic.VDD ~ power.hv
+    ic.VDDA ~ power.hv
+    ic.VDDUSB ~ power.hv
+    ic.VDDRF ~ power.hv
+    ic.VDDSMPS ~ power.hv
+
+    # VBAT bez osobnego ogniwa podtrzymujacego. Na dev boardzie RTC gubi
+    # czas przy odlaczeniu zasilania i nikomu to nie przeszkadza; osobna
+    # bateria pastylkowa zajelaby wiecej miejsca niz procesor.
+    ic.VBAT ~ power.hv
+
+    ic.VSSRF ~ power.lv
+    ic.VSSSMPS ~ power.lv
+
+    # JEDYNE polaczenie ukladu z masa - patrz naglowek. Nie ma pinu VSS.
+    ic.EP ~ power.lv
+
+    # ─── Odsprzeganie ───
+    # Po jednym 100nF na kazda z trzech nozek VDD. W netliscie VDD jest
+    # jedna siecia, wiec rozdzielenie kondensatorow po jednym na nozke
+    # nalezy do rozmieszczenia, nie do tego pliku.
+    decoupling = new Capacitor[3]
+    for c in decoupling:
+        c.capacitance = 100nF +/- 10%
+        c.package = "0603"
+        c.lcsc_id = "C14663"  # 100nF 50V X7R +/-10% 0603
+        assert c.max_voltage within 10V to 50V
+        power.hv ~> c ~> power.lv
+
+    bulk = new Capacitor
+    bulk.capacitance = 4.7uF +/- 20%
+    bulk.package = "0603"
+    bulk.lcsc_id = "C69335"  # 4.7uF 25V X5R +/-10% 0603
+    assert bulk.max_voltage within 10V to 50V
+    power.hv ~> bulk ~> power.lv
+
+    # VDDA: 100nF i 1uF. VREF+ nie ma w tej obudowie osobnej nozki -
+    # odniesieniem przetwornika jest wprost VDDA, i to wystarcza, bo ADC
+    # czyta tu tylko dwa wezly CC (progi sa ulamkami 5V, nie wartosciami
+    # bezwzglednymi).
+    vdda_cap = new Capacitor
+    vdda_cap.capacitance = 100nF +/- 10%
+    vdda_cap.package = "0603"
+    vdda_cap.lcsc_id = "C14663"  # 100nF 50V X7R +/-10% 0603
+    assert vdda_cap.max_voltage within 10V to 50V
+    ic.VDDA ~> vdda_cap ~> power.lv
+
+    vdda_bulk = new Capacitor
+    vdda_bulk.capacitance = 1uF +/- 20%
+    vdda_bulk.package = "0603"
+    vdda_bulk.lcsc_id = "C5673"  # 1uF 25V X5R +/-10% 0603
+    assert vdda_bulk.max_voltage within 10V to 50V
+    ic.VDDA ~> vdda_bulk ~> power.lv
+
+    vddusb_cap = new Capacitor
+    vddusb_cap.capacitance = 100nF +/- 10%
+    vddusb_cap.package = "0603"
+    vddusb_cap.lcsc_id = "C14663"  # 100nF 50V X7R +/-10% 0603
+    assert vddusb_cap.max_voltage within 10V to 50V
+    ic.VDDUSB ~> vddusb_cap ~> power.lv
+
+    vbat_cap = new Capacitor
+    vbat_cap.capacitance = 100nF +/- 10%
+    vbat_cap.package = "0603"
+    vbat_cap.lcsc_id = "C14663"  # 100nF 50V X7R +/-10% 0603
+    assert vbat_cap.max_voltage within 10V to 50V
+    ic.VBAT ~> vbat_cap ~> power.lv
+
+    # ─── VDDRF: 100nF ORAZ 100pF ───
+    # Dwa kondensatory o wartosciach rozniacych sie tysiac razy, i to nie
+    # jest nadmiar. 100nF trzyma szyne przy przelaczaniu trybow nadajnika
+    # (miliampery w mikrosekundach), ale w 0603 ma rezonans wlasny ponizej
+    # 2,4 GHz - powyzej niego jest juz cewka. 100pF ma rezonans nad
+    # pasmem, wiec dopiero ten kondensator zwiera zasilanie radia dla
+    # samej czestotliwosci nosnej. Schemat referencyjny ST (AN5165,
+    # Figure 8: C1 100nF, C2 100pF) ma dokladnie te dwie wartosci.
+    #
+    # 100pF jest jedynym kondensatorem na tej plytce w obudowie 0402,
+    # i to nie z oszczednosci miejsca: ten jeden pracuje PRZY 2,4 GHz,
+    # gdzie o skutecznosci decyduje indukcyjnosc wlasna padow i korpusu,
+    # nie pojemnosc. ST uzywa tu GRM1555 (0402) i 0603 bylo by krokiem
+    # w zla strone. Przy montazu recznym 0402 to jeden element wiecej
+    # do uwagi - ale stoi tuz przy nozce 23, w widocznym miejscu.
+    vddrf_cap = new Capacitor
+    vddrf_cap.capacitance = 100nF +/- 10%
+    vddrf_cap.package = "0603"
+    vddrf_cap.lcsc_id = "C14663"  # 100nF 50V X7R +/-10% 0603
+    assert vddrf_cap.max_voltage within 10V to 50V
+    ic.VDDRF ~> vddrf_cap ~> power.lv
+
+    vddrf_hf_cap = new Capacitor
+    vddrf_hf_cap.capacitance = 100pF +/- 5%
+    vddrf_hf_cap.package = "0402"
+    vddrf_hf_cap.lcsc_id = "C1546"  # 0402CG101J500NT, 100pF 50V C0G +/-5%
+    assert vddrf_hf_cap.max_voltage within 25V to 100V
+    ic.VDDRF ~> vddrf_hf_cap ~> power.lv
+
+    # ─── Przetwornica rdzenia (SMPS) ───
+    # Uklad ma wbudowana przetwornice obnizajaca, ktorej czestotliwosc jest
+    # ZSYNCHRONIZOWANA z HSE - stad tylko dwie dozwolone wartosci, 4 albo
+    # 8 MHz (AN5165 par. 3.3). To nie jest dowolny przetwornik, ktory mozna
+    # ustawic gdziekolwiek: gdyby jego czestotliwosc byla niezalezna od
+    # zegara radia, jej harmoniczne wedrowalyby po pasmie odbiornika.
+    #
+    # Wybrane 4 MHz, czyli 10 uH i 4,7 uF - konfiguracja, ktora ST opisuje
+    # jako "best power performance". Alternatywa (8 MHz, 2,2 uH) istnieje
+    # po to, by zmiescic nizsza cewke, a tutaj 0805 miesci sie bez problemu.
+    #
+    # Po resecie przetwornica jest w BYPASS (DS11929 par. 3.7.1), czyli
+    # rdzen zywi sie z LDO i plytka wstaje nawet gdyby cewki zabraklo albo
+    # byla zle wlutowana. Przejscie w tryb SMPS robi firmware. Wygodne przy
+    # uruchamianiu: ta cewka nie jest warunkiem startu, tylko oszczednoscia
+    # pradu przy nadawaniu.
+    smps_filter = new Inductor
+    smps_filter.inductance = 10nH +/- 5%
+    smps_filter.package = "0402"
+    smps_filter.lcsc_id = "C77103"  # Murata LQG15HS10NJ02D, 0402, 500mA
+    assert smps_filter.max_current within 300mA to 2A
+
+    smps_inductor = new Inductor
+    smps_inductor.inductance = 10uH +/- 20%
+    smps_inductor.lcsc_id = "C2831365"  # SLM2012100MIT, 0805 formowana, 360mA
+    assert smps_inductor.max_current within 200mA to 2A
+
+    # Kolejnosc jest wazna: 10 nH stoi PRZY NOZCE, przed duza cewka.
+    # AN5165 par. 3.3 kaze dodac te cewke "in series with the 10 or 2.2 uH
+    # one, to filter the RF harmonic that can degrade the receiver
+    # performance" - filtruje wiec to, co wychodzi z wezla kluczowanego,
+    # i musi byc na tym wezle, nie za dlawikiem mocy.
+    net_vlx = new Electrical
+    net_vfb = new Electrical
+    net_smps_mid = new Electrical     # miedzy 10 nH a 10 uH
+    net_vlx.override_net_name = "VLXSMPS"
+    net_vfb.override_net_name = "VFBSMPS"
+    net_smps_mid.override_net_name = "SMPS_MID"
+    ic.VLXSMPS ~ net_vlx
+    ic.VFBSMPS ~ net_vfb
+    net_vlx ~> smps_filter ~> net_smps_mid
+    net_smps_mid ~> smps_inductor ~> net_vfb
+
+    # 4,7 uF na wyjsciu przetwornicy i drugie 4,7 uF na jej wejsciu -
+    # AN5165 par. 3.3 wymaga obu, i obu o mozliwie niskim ESR.
+    smps_out_cap = new Capacitor
+    smps_out_cap.capacitance = 4.7uF +/- 20%
+    smps_out_cap.package = "0603"
+    smps_out_cap.lcsc_id = "C69335"  # 4.7uF 25V X5R +/-10% 0603
+    assert smps_out_cap.max_voltage within 10V to 50V
+    net_vfb ~> smps_out_cap ~> power.lv
+
+    smps_in_cap = new Capacitor
+    smps_in_cap.capacitance = 4.7uF +/- 20%
+    smps_in_cap.package = "0603"
+    smps_in_cap.lcsc_id = "C69335"  # 4.7uF 25V X5R +/-10% 0603
+    assert smps_in_cap.max_voltage within 10V to 50V
+    ic.VDDSMPS ~> smps_in_cap ~> power.lv
+
+    # ════════════════════════════════════════════════════════════
+    #  Reset i boot
+    # ════════════════════════════════════════════════════════════
+    ic.NRST ~ reset.line
+    reset_cap = new Capacitor
+    reset_cap.capacitance = 100nF +/- 10%
+    reset_cap.package = "0603"
+    reset_cap.lcsc_id = "C14663"  # 100nF 50V X7R +/-10% 0603
+    assert reset_cap.max_voltage within 10V to 50V
+    reset.line ~> reset_cap ~> power.lv
+
+    # NRST ma wewnetrzny pull-up (ok. 40k), a mimo to stoi tu zewnetrzny
+    # 100k - tak samo jak w schemacie referencyjnym ST (AN5165, Figure 8,
+    # R1). Powod jest w tej plytce: NRST wychodzi na goldpin, czyli na
+    # kilkanascie milimetrow sciezki i wtyk, ktory moze zostac dotkniety
+    # palcem. Dwa rezystory rownolegle daja ok. 29k, co nadal mieszci sie
+    # w tym, czego uklad wymaga, a linia szybciej wraca do stanu wysokiego.
+    reset_pullup = new Resistor
+    reset_pullup.resistance = 100kohm +/- 1%
+    reset_pullup.package = "0603"
+    reset_pullup.lcsc_id = "C25803"  # 100k +/-1% 0603
+    power.hv ~> reset_pullup ~> reset.line
+
+    # BOOT0 sciagniety do masy = start z Flasha, czyli plytka prosto
+    # z montazu wstaje z programu. Bez tego rezystora nozka plywa i uklad
+    # potrafi wejsc w bootloader systemowy.
+    #
+    # Tracker mial tu jeszcze zworke lutowana 0 R do +3V3 (`debug.ato`),
+    # bo w kanapce o szczelinie 1,5 mm nie bylo jak podac stanu drutem.
+    # Tutaj BOOT0 wychodzi na listwe, a obok niego stoi +3V3 - wejscie
+    # w DFU to zworka z jednego goldpina na drugi. Osobna czesc bylaby
+    # drugim sposobem zrobienia tego samego.
+    boot0_pulldown = new Resistor
+    boot0_pulldown.resistance = 10kohm +/- 1%
+    boot0_pulldown.package = "0603"
+    boot0_pulldown.lcsc_id = "C98220"  # YAGEO RC0603FR-0710KL, 10k +/-1% 0603
+    ic.PH3_BOOT0 ~> boot0_pulldown ~> power.lv
+    ic.PH3_BOOT0 ~ boot0.line
+
+    # ════════════════════════════════════════════════════════════
+    #  Kwarce
+    # ════════════════════════════════════════════════════════════
+    # Oscylatory skladane jawnie, bez stdlibowego `Crystal_Oscillator` -
+    # z tego samego powodu co w trackerze: jego `Crystal` ma wyprowadzenie
+    # `gnd`, ktorego kwarc dwupadowy nie ma, a picker potrafil wstawic
+    # 1 uF zamiast 12 pF.
+
+    # ─── HSE 32 MHz - zegar radia. BEZ kondensatorow obciazenia ───
+    # Uzasadnienie w naglowku pliku i w pliku czesci. Tu tylko kwarc
+    # i obudowa na masie; wszystko inne jest w procesorze.
+    hse_xtal = new NDK_NX2016SA_32MHZ_EXS00A_CS06654_package
+    ic.OSC_IN ~ hse_xtal.OSC1
+    ic.OSC_OUT ~ hse_xtal.OSC2
+    hse_xtal.GND ~ power.lv
+
+    # ─── LSE 32,768 kHz - okna BLE i RTC ───
+    # Abracon ABS07-32.768KHZ-9-T, C_L = 9pF, Rs <= 70k, +/-20ppm.
+    # C = 2 * (C_L - C_stray); przy C_L = 9pF i C_stray ~3pF wychodzi 12pF.
+    lse_xtal = new Abracon_LLC_ABS07_32_768KHZ_9_T_package
+    lse_caps = new Capacitor[2]
+    for c in lse_caps:
+        c.capacitance = 12pF +/- 5%
+        c.package = "0603"
+        c.lcsc_id = "C107034"  # 12pF 50V NP0 +/-5% 0603
+        assert c.max_voltage within 25V to 100V
+
+    # Rezystor szeregowy ogranicza moc wtloczona w kwarc zegarkowy.
+    # Zero omow, bo wartosc dobiera sie po pomiarze na gotowej plytce -
+    # miejsce ma byc, zeby nie trzeba bylo przecinac sciezki.
+    lse_series = new Resistor
+    lse_series.resistance = 0ohm +/- 1mohm
+    lse_series.package = "0603"
+    lse_series.lcsc_id = "C21189"  # 0R 0603
+    net_lse_xtal = new Electrical     # za rezystorem 0 R, przy samym kwarcu
+    net_lse_xtal.override_net_name = "LSE_XTAL"
+    ic.PC14_OSC32_IN ~ lse_xtal.OSC1
+    ic.PC15_OSC32_OUT ~> lse_series ~> net_lse_xtal
+    net_lse_xtal ~ lse_xtal.OSC2
+    lse_xtal.OSC1 ~> lse_caps[0] ~> power.lv
+    net_lse_xtal ~> lse_caps[1] ~> power.lv
+
+    # ════════════════════════════════════════════════════════════
+    #  Tor RF
+    # ════════════════════════════════════════════════════════════
+    # Jedna czesc miedzy procesorem i antena. Wszystkie cztery pady masy
+    # MLPF ida na mase - nie jest to kwestia symetrii obudowy: to one
+    # domykaja petle filtra i ich indukcyjnosc wchodzi wprost w jego
+    # charakterystyke. Kazdy chce wlasnej przelotki tuz przy padzie.
+    mlpf = new STMicroelectronics_MLPF_WB55_01E3_package
+    net_rf1 = new Electrical
+    net_rf1.override_net_name = "RF1"
+    ic.RF1 ~ net_rf1
+    net_rf1 ~ mlpf.IN
+    mlpf.OUT ~ antenna
+    mlpf.GND1 ~ power.lv
+    mlpf.GND2 ~ power.lv
+    mlpf.GND3 ~ power.lv
+    mlpf.GND4 ~ power.lv
+
+    # AT0 i AT1 (26, 27) zostaja BEZ SIECI. To wyprowadzenia testowe
+    # producenta; karta katalogowa nie nadaje im zadnej funkcji
+    # aplikacyjnej i nie wolno ich nigdzie podlaczac.
+
+    # ════════════════════════════════════════════════════════════
+    #  Debug
+    # ════════════════════════════════════════════════════════════
+    ic.PA13 ~ swd.dio.line     # SWDIO
+    ic.PA14 ~ swd.clk.line     # SWCLK
+    ic.PB3 ~ swd.swo.line      # TRACESWO - ta sama konsola ITM co w trackerze
+    swd.reset ~ reset
+
+    # PA15 to takze JTDI, a PB4 - NJTRST. PB4 jest zajety (GPOUT gauge'a),
+    # wiec **pelny JTAG jest na tej plytce niedostepny** i zostaje samo
+    # SWD. Swiadomie: JTAG zjadlby piec nozek z trzydziestu, a kazda sonda,
+    # ktora tu wejdzie, i tak mowi po SWD.
+
+    # ════════════════════════════════════════════════════════════
+    #  USB full-speed
+    # ════════════════════════════════════════════════════════════
+    # Bez rezystorow szeregowych na D+/D-: terminacja jest w procesorze
+    # (DS11929, uwaga przy opisie USB: "no external termination series
+    # resistors are required"). Dioda ESD stoi przy gniezdzie, w `power.ato`.
+    ic.PA11 ~ usb.usb_if.d.n.line   # USB_DM
+    ic.PA12 ~ usb.usb_if.d.p.line   # USB_DP
+    usb.usb_if.buspower.lv ~ power.lv
+
+    # ════════════════════════════════════════════════════════════
+    #  Zasilanie plytki - I2C1 i statusy
+    # ════════════════════════════════════════════════════════════
+    # Pull-upy magistrali i wyjsc open-drain stoja w `power.ato`, przy
+    # ukladach, ktorych karty katalogowe je narzucaja.
+    ic.PB8 ~ pmic_i2c.scl.line
+    ic.PB9 ~ pmic_i2c.sda.line
+    ic.PB1 ~ charger_enable.line
+    ic.PB0 ~ charger_interrupt.line     # EXTI0
+    ic.PE4 ~ charger_power_good.line
+    ic.PB2 ~ charger_charging.line
+    ic.PB4 ~ gauge_interrupt.line       # EXTI4
+
+    # ════════════════════════════════════════════════════════════
+    #  USB-C: pomiar obu wezlow CC
+    # ════════════════════════════════════════════════════════════
+    # Oba na kanalach ADC1 (IN5 i IN6). Rezystory Rd 5.1k siedza przy
+    # gniezdzie, w `power.ato` - tutaj wchodza same wezly.
+    ic.PA0 ~ cc1
+    ic.PA1 ~ cc2
+
+    # ════════════════════════════════════════════════════════════
+    #  SD NAND na SPI1
+    # ════════════════════════════════════════════════════════════
+    ic.PA5 ~ sd_spi.sclk.line   # SPI1_SCK
+    ic.PA6 ~ sd_spi.miso.line   # SPI1_MISO <- DAT0
+    ic.PA7 ~ sd_spi.mosi.line   # SPI1_MOSI -> CMD
+    ic.PA4 ~ sd_spi.cs.line     # GPIO, nie SPI1_NSS - patrz `interfaces.ato`
+
+    # ════════════════════════════════════════════════════════════
+    #  Wolne wyprowadzenia
+    # ════════════════════════════════════════════════════════════
+    # Nazwy sieci sa nazwami nozek i to jest tu uzyteczne: plytka trasuje
+    # sie recznie, a przy nozce na listwie chce sie wiedziec, ktory to port
+    # i jakie ma funkcje alternatywne - bez zagladania do tego pliku.
+    ic.PA2 ~ spare[0]
+    ic.PA3 ~ spare[1]
+    ic.PA8 ~ spare[2]
+    ic.PA9 ~ spare[3]
+    ic.PA10 ~ spare[4]
+    ic.PA15 ~ spare[5]
+    ic.PB5 ~ spare[6]
+    ic.PB6 ~ spare[7]
+    ic.PB7 ~ spare[8]
+
+    # ════════════════════════════════════════════════════════════
+    #  Nazwy sieci
+    # ════════════════════════════════════════════════════════════
+    # Bez tego atopile nazywa siec od pierwszego napotkanego wezla i na
+    # plytce lezy `line` zamiast BOOT0, `hv` zamiast NRST, `13` zamiast
+    # SD_CS i `lse_caps[0]-power-hv` zamiast LSE_IN. Przy plytce, ktora
+    # trasuje sie recznie, to nie jest kosmetyka - a `board_setup.py`
+    # dobiera klasy sieci wlasnie po nazwach.
+    #
+    # `override_net_name` dziala tylko na polu lezacym WPROST w module,
+    # stad te aliasy. Zadnych elementow nie dokladaja.
+    net_nrst = new Electrical
+    net_boot0 = new Electrical
+    net_swdio = new Electrical
+    net_swclk = new Electrical
+    net_swo = new Electrical
+    net_usb_dm = new Electrical
+    net_usb_dp = new Electrical
+    net_sd_clk = new Electrical
+    net_sd_miso = new Electrical
+    net_sd_mosi = new Electrical
+    net_sd_cs = new Electrical
+    net_scl = new Electrical
+    net_sda = new Electrical
+    net_chg_ce = new Electrical
+    net_chg_int = new Electrical
+    net_chg_pg = new Electrical
+    net_chg_stat = new Electrical
+    net_gauge_int = new Electrical
+    net_lse_in = new Electrical
+    net_lse_out = new Electrical
+
+    net_nrst ~ reset.line
+    net_boot0 ~ boot0.line
+    net_swdio ~ swd.dio.line
+    net_swclk ~ swd.clk.line
+    net_swo ~ swd.swo.line
+    net_usb_dm ~ usb.usb_if.d.n.line
+    net_usb_dp ~ usb.usb_if.d.p.line
+    net_sd_clk ~ sd_spi.sclk.line
+    net_sd_miso ~ sd_spi.miso.line
+    net_sd_mosi ~ sd_spi.mosi.line
+    net_sd_cs ~ sd_spi.cs.line
+    net_scl ~ pmic_i2c.scl.line
+    net_sda ~ pmic_i2c.sda.line
+    net_chg_ce ~ charger_enable.line
+    net_chg_int ~ charger_interrupt.line
+    net_chg_pg ~ charger_power_good.line
+    net_chg_stat ~ charger_charging.line
+    net_gauge_int ~ gauge_interrupt.line
+    net_lse_in ~ ic.PC14_OSC32_IN
+    net_lse_out ~ ic.PC15_OSC32_OUT
+
+    net_nrst.override_net_name = "NRST"
+    net_boot0.override_net_name = "BOOT0"
+    net_swdio.override_net_name = "SWDIO"
+    net_swclk.override_net_name = "SWCLK"
+    net_swo.override_net_name = "SWO"
+    # Przyrostki `_P` / `_N` nie sa ozdoba: KiCad rozpoznaje pare roznicowa
+    # WYLACZNIE po nich (albo po `+` / `-`). Wczesniej stalo tu `USB_DP` /
+    # `USB_DM` - nazwy sygnalow z karty katalogowej ST - i narzedzie do
+    # trasowania par w ogole ich nie widzialo, bo "DP" i "DM" przyrostkami
+    # pary nie sa. Baza obu nazw musi byc identyczna (`USB_D`), inaczej tez
+    # sie nie zlacza.
+    net_usb_dm.override_net_name = "USB_D_N"
+    net_usb_dp.override_net_name = "USB_D_P"
+    net_sd_clk.override_net_name = "SD_CLK"
+    net_sd_miso.override_net_name = "SD_MISO"
+    net_sd_mosi.override_net_name = "SD_MOSI"
+    net_sd_cs.override_net_name = "SD_CS"
+    net_scl.override_net_name = "PMIC_SCL"
+    net_sda.override_net_name = "PMIC_SDA"
+    net_chg_ce.override_net_name = "CHG_CE"
+    net_chg_int.override_net_name = "CHG_INT"
+    net_chg_pg.override_net_name = "CHG_PG"
+    net_chg_stat.override_net_name = "CHG_STAT"
+    net_gauge_int.override_net_name = "GAUGE_INT"
+    # LSE_OUT to odcinek PROCESOR -> rezystor 0 R; za rezystorem jest
+    # druga siec (do kwarcu) i ma zostac osobna - inaczej narzedzia uznaja
+    # obie za jedna i zewra rezystor.
+    net_lse_in.override_net_name = "LSE_IN"
+    net_lse_out.override_net_name = "LSE_OUT"
+
+    spare[0].override_net_name = "PA2"
+    spare[1].override_net_name = "PA3"
+    spare[2].override_net_name = "PA8"
+    spare[3].override_net_name = "PA9"
+    spare[4].override_net_name = "PA10"
+    spare[5].override_net_name = "PA15"
+    spare[6].override_net_name = "PB5"
+    spare[7].override_net_name = "PB6"
+    spare[8].override_net_name = "PB7"

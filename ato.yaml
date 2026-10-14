@@ -1,0 +1,12 @@
+requires-atopile: "0.15.8"
+
+paths:
+  src: ./
+  layout: ./layouts
+
+builds:
+  # Jedna plytka, jeden build. `dev.ato` spina tor zasilania przeniesiony
+  # z `gps_tracker-6l` (power.ato), procesor (mcu.ato), pamiec (storage.ato)
+  # i dwie listwy goldpinow (headers.ato).
+  dev:
+    entry: dev.ato:DevBoard

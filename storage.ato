@@ -1,0 +1,94 @@
+"""Pamiec masowa: SD NAND 2 Gbit wlutowany na stale, na SPI1.
+
+Zamiast gniazda karty microSD, ktore tracker ma na plytce dolnej. Powod
+jest powierzchniowy: gniazdo karty to okolo 15 x 15 mm razem z korytarzem
+na wysuwanie karty i musi stac przy krawedzi, a krawedzie tej plytki sa
+juz zajete przez USB-C, zlaczke ogniwa, dwie listwy i antene. LGA-8 ma
+8 x 6 mm, stoi gdziekolwiek i nie zabiera ani jednej krawedzi.
+
+Co sie na tym traci: karty nie da sie wyjac i wlozyc do czytnika.
+W trackerze to bylo wazne, bo karta byla jedyna droga do logu, ktora
+istnieje ZANIM firmware cokolwiek wystawi po USB. Tutaj ta droga juz jest
+i jest lepsza: SWO wychodzi na listwe i konsola ITM dziala od pierwszego
+resetu, bez zadnego firmware'u poza samym wpisem do rejestru.
+"""
+
+#pragma experiment("BRIDGE_CONNECT")
+#pragma experiment("FOR_LOOP")
+
+import ElectricPower
+import Capacitor
+from "interfaces.ato" import SpiWithCs
+from "parts/MK_MKDV2GCL_ABF/MK_MKDV2GCL_ABF.ato" import MK_MKDV2GCL_ABF_package
+
+
+module SdNandSpi:
+    """MK MKDV2GCL-ABF - 2 Gbit SD NAND w trybie SPI.
+
+    Tryb SPI, a nie 4-bitowy SD, i nie jest to wybor: **STM32WB55 nie ma
+    peryferialu SDMMC**. Lista peryferiow tego ukladu
+    (`STM32WB55CGUx.xml`) zawiera QUADSPI, SPI1, SAI1, USB, I2C1/I2C3,
+    USART1, LPUART1 - i na tym koniec interfejsow szeregowych. QUADSPI tez
+    nie pomoze: mowi protokolem pamieci NOR, a nie protokolem karty SD.
+
+    Co z tego wynika dla predkosci: SPI1 wisi na APB2, czyli przy 64 MHz
+    rdzenia zegar SCK ma maksymalnie 32 MHz, i jedzie jedna linia danych
+    zamiast czterech. Realnie 2-3 MB/s zamiast kilkunastu. Dla logu
+    i konfiguracji wiecej niz dosc; do strumienia audio albo zrzutu
+    pamieci - nie.
+
+    Inicjalizacja (karta katalogowa, par. 6): host musi sciagnac DAT3 (CD)
+    do zera JUZ przy pierwszych taktach, zeby uklad wybral tryb SPI.
+    Po tym wyborze wyprowadzenia znacza:
+        CLK  -> SCK
+        CMD  -> MOSI (host -> uklad)
+        DAT0 -> MISO (uklad -> host)
+        DAT3 -> /CS
+    DAT1 i DAT2 w tym trybie nie sa uzywane i **zostaja bez sieci** - tak
+    mowi specyfikacja SD dla trybu SPI. Nie ma w tym pominiecia: gdyby
+    mialy dostac stan, musialby to byc stan podany przez host, a host nie
+    ma czym (wszystkie 30 nozek jest rozdanych).
+
+    Uwaga do wyprowadzenia DAT3: ma w srodku pull-up ok. 50k, wlaczony po
+    zalaczeniu zasilania. Sluzy on detekcji obecnosci karty w gniazdzie
+    i tutaj nie ma znaczenia - uklad jest wlutowany - ale oznacza, ze
+    linia CS sama idzie w gore, kiedy procesor jej nie trzyma. To stan
+    bezpieczny (uklad nieaktywny), wiec zadnego rezystora dokladac nie
+    trzeba.
+    """
+    ic = new MK_MKDV2GCL_ABF_package
+
+    power = new ElectricPower
+    spi = new SpiWithCs
+
+    # Karta katalogowa: 2,7 - 3,6 V. Szyna +3V3 miesci sie w srodku
+    # zakresu, wiec nie ma tu zadnej konwersji poziomow ani dzielnikow.
+    assert power.voltage within 2.7V to 3.6V
+
+    ic.VDD ~ power.hv
+    ic.GND ~ power.lv
+
+    ic.CLK ~ spi.sclk.line
+    ic.CMD ~ spi.mosi.line
+    ic.DAT0 ~ spi.miso.line
+    ic.DAT3 ~ spi.cs.line
+    # DAT1 (nozka 7) i DAT2 (nozka 1) celowo bez sieci - patrz docstring.
+
+    # ─── Odsprzeganie ───
+    # Zapis ciagnie do 35 mA (karta katalogowa, ICCO2 przy 50 MHz)
+    # i robi to impulsami, bo tyle trwa programowanie strony NAND.
+    # 10 uF trzyma szyne przy tych impulsach, 100 nF obsluguje zbocza
+    # na wejsciach.
+    bulk = new Capacitor
+    bulk.capacitance = 10uF +/- 20%
+    bulk.package = "0603"
+    bulk.lcsc_id = "C479655"  # 0603X106M250NT, 10uF 25V X5R +/-20% 0603
+    assert bulk.max_voltage within 10V to 50V
+    power.hv ~> bulk ~> power.lv
+
+    decoupling = new Capacitor
+    decoupling.capacitance = 100nF +/- 10%
+    decoupling.package = "0603"
+    decoupling.lcsc_id = "C14663"  # 100nF 50V X7R +/-10% 0603
+    assert decoupling.max_voltage within 10V to 50V
+    power.hv ~> decoupling ~> power.lv

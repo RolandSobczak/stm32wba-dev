@@ -1,0 +1,51 @@
+import has_designator_prefix
+import has_part_picked
+import is_atomic_part
+
+
+component PinHeader_1x12_package:
+    """Goldpiny 1x12, raster 2,54 mm, pionowe THT.
+
+    Dwie takie listwy stoja wzdluz dluzszych krawedzi plytki i sa calym
+    interfejsem tej plytki do swiata: zasilanie, SWD, BOOT0 i dziewiec
+    wolnych nozek procesora. Podzial na dwa rzedy i kolejnosc pinow -
+    w `headers.ato`.
+
+    Raster 2,54 mm wybrany wprost: wchodzi w plytke stykowa, w przewody
+    Dupont i w tasiemke IDC, a kazdy wezel da sie zlapac krokodylkiem.
+    Na dev boardzie to wazniejsze niz powierzchnia, ktora te listwy
+    zajmuja - inaczej niz na plytkach trackera, gdzie `debug.ato`
+    wyrzucil raster 2,54 mm w calosci, bo w szczelinie 1,5 mm zaden
+    z jego argumentow nie dzialal.
+
+    **Otwory 1,0 mm przechodza przez wszystkie cztery warstwy**, w tym
+    przez plaszczyzne masy (In1) i zasilania (In2). Dwadziescia cztery
+    takie otwory w dwoch rzedach to realne ciecia w obu plaszczyznach,
+    i dlatego `tools/board_setup.py` ustawia odstep wylewki na 0,2 mm
+    zamiast domyslnych 0,5 mm: przy 0,5 mm wolne pola wokol sasiednich
+    pinow nachodza na siebie i rzad przecina plaszczyzne na wylot.
+
+    Footprint i symbol pochodza z bibliotek KiCada 9
+    (`PinHeader_1x12_P2.54mm_Vertical`, `Conn_01x12`) - to te same
+    wzorce, z ktorych wziete sa listwy w `gps_tracker-6l`.
+
+    Czesc kupowana poza LCSC - stad `supplier_partno`, ktore nie zaczyna
+    sie od "C": eksporter pomija ja wtedy w BOM-ie dla montazu.
+    """
+    trait is_atomic_part<manufacturer="Generic", partnumber="PinHeader-1x12-2.54", footprint="PinHeader_1x12.kicad_mod", symbol="PinHeader_1x12.kicad_sym">
+    trait has_part_picked::by_supplier<supplier_id="lcsc", supplier_partno="PinHeader-1x12-2.54", manufacturer="Generic", partno="PinHeader-1x12-2.54">
+    trait has_designator_prefix<prefix="J">
+
+    # pins
+    signal p1 ~ pin 1
+    signal p2 ~ pin 2
+    signal p3 ~ pin 3
+    signal p4 ~ pin 4
+    signal p5 ~ pin 5
+    signal p6 ~ pin 6
+    signal p7 ~ pin 7
+    signal p8 ~ pin 8
+    signal p9 ~ pin 9
+    signal p10 ~ pin 10
+    signal p11 ~ pin 11
+    signal p12 ~ pin 12

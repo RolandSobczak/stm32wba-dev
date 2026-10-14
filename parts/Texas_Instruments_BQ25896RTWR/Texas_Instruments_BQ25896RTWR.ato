@@ -1,0 +1,39 @@
+import has_designator_prefix
+import has_part_picked
+import is_atomic_part
+import is_auto_generated
+
+component Texas_Instruments_BQ25896RTWR_package:
+    # This trait marks this file as auto-generated
+    # If you want to manually change it, remove the trait
+    trait is_auto_generated<system="ato_part", source="easyeda:C181475", date="2026-09-26T23:16:36.240984+00:00", checksum="abbac4edc639ad66290edc4bdf586cd8ead074f29404b71559e05e3fa2a5aee4">
+
+    trait is_atomic_part<manufacturer="Texas Instruments", partnumber="BQ25896RTWR", footprint="QFN-24_L4.0-W4.0-P0.50-TL-EP2.7.kicad_mod", symbol="BQ25896RTWR.kicad_sym", model="QFN-24_L4.0-W4.0-P0.50-TL-EP2.7.STEP">
+    trait has_part_picked::by_supplier<supplier_id="lcsc", supplier_partno="C181475", manufacturer="Texas Instruments", partno="BQ25896RTWR">
+    trait has_designator_prefix<prefix="U">
+
+    # pins
+    signal BAT ~ pin 13
+    BAT ~ pin 14
+    signal BTST ~ pin 21
+    signal CE ~ pin 9
+    signal EPAD ~ pin 25
+    signal INT ~ pin 7
+    signal LIIM ~ pin 10
+    signal OTG ~ pin 8
+    signal PG ~ pin 3
+    signal PGND ~ pin 17
+    PGND ~ pin 18
+    signal PMID ~ pin 23
+    signal PSEL ~ pin 2
+    signal QON ~ pin 12
+    signal REGN ~ pin 22
+    signal SCL ~ pin 5
+    signal SDA ~ pin 6
+    signal STAT ~ pin 4
+    signal SW ~ pin 19
+    SW ~ pin 20
+    signal SYS ~ pin 15
+    SYS ~ pin 16
+    signal TS ~ pin 11
+    signal VBUS ~ pin 1

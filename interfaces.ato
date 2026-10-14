@@ -1,0 +1,19 @@
+"""Interfejsy, ktorych nie ma w stdlib atopile."""
+
+import ElectricLogic
+
+
+interface SpiWithCs:
+    """SPI z osobnym CS, sterowanym z GPIO.
+
+    Odpowiednik `HostIfSPI` z `gps_tracker-6l/interfaces.ato`, ale bez linii
+    przerwania: SD NAND nie ma czym przerwac, a `CS` nie jest tu sprzetowym
+    `SPI1_NSS` - obsluguje go firmware zwyklym GPIO. Powod jest w protokole,
+    nie w peryferialu: karta SD w trybie SPI wymaga trzymania CS nisko
+    przez CALA transakcje wielobajtowa, a sprzetowy NSS zwalnia linie
+    miedzy slowami.
+    """
+    sclk = new ElectricLogic
+    mosi = new ElectricLogic
+    miso = new ElectricLogic
+    cs = new ElectricLogic

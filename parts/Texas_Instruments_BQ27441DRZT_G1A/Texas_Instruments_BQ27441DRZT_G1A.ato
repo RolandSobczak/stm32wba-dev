@@ -1,0 +1,25 @@
+import has_designator_prefix
+import has_part_picked
+import is_atomic_part
+import is_auto_generated
+
+component Texas_Instruments_BQ27441DRZT_G1A_package:
+    # This trait marks this file as auto-generated
+    # If you want to manually change it, remove the trait
+    trait is_auto_generated<system="ato_part", source="easyeda:C2864880", date="2026-10-01T22:07:29.657651+00:00", checksum="b06b05c0269effbf0851c01e1b913e6956e4833c9f1f702f58770ccbe3b15d7b">
+
+    trait is_atomic_part<manufacturer="Texas Instruments", partnumber="BQ27441DRZT-G1A", footprint="SON-12_L4.0-W2.5-P0.40-TL-EP.kicad_mod", symbol="BQ27441DRZT-G1A.kicad_sym", model="SON-12_L4.0-W2.5-H1-P0.40-BL-EP.step">
+    trait has_part_picked::by_supplier<supplier_id="lcsc", supplier_partno="C2864880", manufacturer="Texas Instruments", partno="BQ27441DRZT-G1A">
+    trait has_designator_prefix<prefix="U">
+
+    # pins
+    signal BAT ~ pin 6
+    signal BIN ~ pin 10
+    signal EP ~ pin 13
+    signal GPOUT ~ pin 12
+    signal SCL ~ pin 2
+    signal SDA ~ pin 1
+    signal SRN ~ pin 7
+    signal SRP ~ pin 8
+    signal VDD ~ pin 5
+    signal VSS ~ pin 3
