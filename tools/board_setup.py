@@ -115,44 +115,32 @@ ANTENA_KEEPOUT_MM = (-3.05, -5.45, 12.15, -0.25)   # x1, y1, x2, y2 od srodka
 # dolozenie dwoch warstw nie zmienia zadnej z nich. Szczegoly przy STOSY.
 TRACK_MM = 0.15          # domyslne minimum, nie szerokosc do rysowania
 CLEARANCE_MM = 0.15
-VIA_DIA_MM = 0.6
+
+# ─── Przelotki ───────────────────────────────────────────────────────────
+#
+# Wszystkie wiertla na tej plytce maja **0,3 mm i ani dziesiatej mniej**.
+# Nie jest to ostroznosc, tylko cennik: w formularzu JLCPCB opcja
+# "Min via hole size/diameter" ma pierwszy prog **0.3mm/(0.4/0.45mm)**
+# i jest on bezplatny; kazdy nastepny (0.25, 0.2, 0.15) podnosi cene
+# zamowienia. Sprawdzone na wycenie 100 x 100 mm, 5 szt., 4 warstwy.
+#
+# Skoro prog dopuszcza srednice od 0,4 mm, przelotka sygnalowa schodzi
+# z 0,6 na **0,5 mm**: pierscien 0,1 mm nadal jest nad preferowanym przez
+# JLCPCB 0,075, a kazda przelotka oddaje 0,1 mm miejsca na trasowanie.
+VIA_DIA_MM = 0.5
 VIA_DRILL_MM = 0.3
 
-# ─── Wyprowadzenie BGA ───────────────────────────────────────────────────
+# Przelotka w PADZIE - inne ograniczenie i innego rodzaju. Podpowiedz przy
+# opcji "Epoxy Filled & Capped" mowi wprost:
 #
-# STM32U5A5 to UFBGA-132 o rastrze 0,5 mm i padzie 0,300 mm. Stad wynika
-# cala ta sekcja, bo geometria nie zostawia wyboru:
+#   "Vias should be at most 0.5 mm in diameter to avoid incomplete
+#    filling. Vias violating this size will be left unfilled."
 #
-#   miedzy SASIEDNIMI padami   0,500 - 0,300 = 0,200 mm
-#   po PRZEKATNEJ              0,707 - 0,300 = 0,407 mm
-#
-# Przy domyslnych 0,15/0,15 miedzy dwa pady nie wejdzie nawet sciezka
-# o zerowej szerokosci: 0 + 2 x 0,15 = 0,30 mm wobec dostepnych 0,20.
-# Kulki lezaly do tej pory w klasie Default i nikt im tego nie policzyl -
-# to jest ta usterka, ktora ten wpis naprawia.
-#
-# Liczby dobrane pod JLCPCB: dla plytek 4- i 6-warstwowych deklaruje
-# 0,0889 mm (3,5 mil) sciezki i odstepu. Zostawiamy zapas nad tym
-# minimum, bo 0,09 to wartosc, przy ktorej uzysk zaczyna zalezec od
-# panelu. Przelotka jest natomiast dokladnie ta, ktora zamowiono -
-# opcja "Min via hole size 0.2mm/(0.3/0.35mm)", uzasadnienie nizej:
-BGA_TRACK_MM = 0.10
-BGA_CLEARANCE_MM = 0.10
-BGA_VIA_DIA_MM = 0.30
-BGA_VIA_DRILL_MM = 0.20
-
-# Przelotka w padzie elementu BIERNEGO - inna sprawa niz kulka BGA i inne
-# liczby. Pad 0402 ma 0,80 x 0,90 mm, czyli prawie trzy razy wiecej niz
-# kulka, wiec nie ma powodu meczyc sie z wiertlem 0,2 mm. Przy 0,50/0,25
-# pierscien wynosi 0,125 mm - grubo nad preferowanym przez JLCPCB 0,075 -
-# a wokol przelotki zostaje jeszcze 0,15 mm padu z kazdej strony, wiec
-# jest sie czego chwycic cynie. Grubsza przelotka to tez mniejsza
-# indukcyjnosc, a o nia w odsprzeganiu chodzi.
-#
-# Wiertlo 0,25 mm miesci sie w zakresie 0,2-0,5 mm, ktory JLCPCB zalewa
-# zywica, wiec te przelotki tez sa POFV i pad zostaje plaski.
+# Czyli 0,5 mm to SUFIT, nie propozycja - przelotka szersza zostanie
+# niezalana, a niezalana przelotka w padzie wysysa cyne ze spoiny.
+# Z wiertlem 0,3 mm daje to pierscien 0,1 mm, tyle samo co sygnalowa.
 PAD_VIA_DIA_MM = 0.50
-PAD_VIA_DRILL_MM = 0.25
+PAD_VIA_DRILL_MM = 0.30
 
 # ─── Szycie przelotkami pod padami termicznymi ───────────────────────────
 #
@@ -162,9 +150,8 @@ PAD_VIA_DRILL_MM = 0.25
 # procesora wisi na wylewce F.Cu, a plaszczyzna In1 lezy 0,2104 mm nizej
 # i nie ma jak do niej dojsc.
 #
-# Rodziny wybierane po NAZWIE FOOTPRINTU, nie po oznaczeniu - tak samo jak
-# `sieci_bga` szuka "BGA". Oznaczenia przenumerowuja sie przy kazdej
-# przebudowie, nazwa obudowy nie.
+# Rodziny wybierane po NAZWIE FOOTPRINTU, a nie po oznaczeniu: oznaczenia
+# przenumerowuja sie przy kazdej przebudowie, nazwa obudowy nie.
 #
 # Prog powierzchni odsiewa pady sygnalowe od termicznych i przy okazji
 # chroni przed footprintem, ktory ma pad termiczny tylko z nazwy: w tym
@@ -189,52 +176,25 @@ STITCH_MIN_PAD_MM2 = 2.0                 # mniej = pad sygnalowy, nie termiczny
 STITCH_PITCH_MM = 1.0                    # docelowy raster
 STITCH_MARGIN_MM = 0.25                  # od krawedzi przelotki do krawedzi padu
 
-# ! DLACZEGO TE LICZBY, A NIE INNE.
-#
-# Przy padzie 0,300 mm i rastrze 0,5 mm miedzy sasiednimi kulkami zostaje
-# 0,200 mm, a sciezka tej klasy potrzebuje 0,10 + 2 x 0,10 = 0,30 mm.
-# Bokiem nie przejdzie NIC. Po PRZEKATNEJ srodki dzieli 0,707 mm, czyli
-# 0,407 mm miedzy krawedziami padow - tedy jedna sciezka przechodzi
-# z zapasem 0,107 mm. Cale trasowanie pod BGA idzie wiec po 45 stopniach.
-#
-# Rozklad sygnalow na pierscienie (policzony z netlisty):
-#
-#   pierscien 1   22 sygnaly    7 zasilania   15 wolnych
-#   pierscien 2   16            2             18
-#   pierscien 3   13            0             15
-#   pierscien 4    7            9              4
-#
-# Na F.Cu wychodzi sam pierscien 1; wszystko glebiej musi zejsc w dol,
-# a miedzy kulkami nie ma gdzie postawic przelotki. Stad via-in-pad:
-# przelotka siedzi W SRODKU padu kulki. Stawia je `tools/via_in_pad.py`.
-#
-# Srednica 0,30 mm rowna sie srednicy padu - przelotka nie wystaje poza
-# kulke i nie zjada tych 0,407 mm przekatnej. Wiertlo 0,20 mm daje
-# pierscien 0,050 mm: to DOKLADNIE minimum JLCPCB (preferowane 0,075).
-# Wiekszego nie zrobimy bez powiekszenia padu kulki, a to zwezyloby
-# przekatna ponizej 0,30 mm i zabralo jedyny kanal trasowania.
-#
-# Koszt u JLCPCB (wycena 6 warstw, 100 x 100, 5 szt., wrzesien 2026):
-# samo "Via Covering: Epoxy Filled & Capped" jest DARMOWE na 6-20
-# warstwach, ale wiertlo 0,2 mm kosztuje 15,66 EUR i dociaga wymuszony
-# "4-Wire Kelvin Test" (15,15) oraz FR4 TG155 (3,13) - razem 33,94 EUR
-# na zamowienie. Zejscie na 0,25 mm oszczedza 0,36 EUR i wymagaloby padu
-# 0,35 mm, wiec sie nie oplaca. HDI odpada: mikroprzelotki potrzebne sa
-# dopiero przy rastrze 0,4 mm, a tu wystarczy przelotka na wylot.
-
-PREPREG_H_MM = 0.2104    # F.Cu -> In1 (masa) - warstwa odniesienia dla RF
-PREPREG_ER = 4.4
-CU_ZEWN_MM = 0.035       # 1 oz
-CU_WEWN_MM = 0.0152      # 0,5 oz
-RDZEN_4W_MM, RDZEN_4W_ER = 1.065, 4.6
-RDZEN_6W_MM, RDZEN_6W_ER = 0.400, 4.36
-
 # Odstep wylewki od obcej miedzi. Domyslne 0,5 mm KiCada jest tu za duze
 # i to nie kwestia gustu: wokol pinow zlaczy 2,54 mm (pad 1,70 mm) robi
 # wolne pole 2,70 mm, czyli WIECEJ niz raster - kregi nachodza na siebie
 # i plaszczyzna zostaje przecieta na wylot przez caly rzad. Przy 0,2 mm
 # wolne pole ma 2,10 mm i miedzy pinami zostaje mostek 0,44 mm.
 ZONE_CLEARANCE_MM = 0.2
+
+# ─── Geometria laminatu ──────────────────────────────────────────────────
+#
+# Stos JLCPCB 1,6 mm z rodziny preszpanu 7628. Preszpan miedzy warstwa
+# zewnetrzna a najblizsza wewnetrzna ma 0,2104 mm przy Er 4,4 i jest to
+# JEDYNA liczba, od ktorej zaleza szerokosci klas `RF` i `USB` wyzej -
+# dlatego ten sam stos w wersji szescio- i czterowarstwowej daje te same
+# szerokosci, a dolozenie dwoch warstw niczego w nich nie zmienia.
+PREPREG_H_MM = 0.2104    # F.Cu -> In1 (masa) - warstwa odniesienia dla RF
+PREPREG_ER = 4.4
+CU_ZEWN_MM = 0.035       # 1 oz
+CU_WEWN_MM = 0.0152      # 0,5 oz
+RDZEN_4W_MM, RDZEN_4W_ER = 1.065, 4.6
 
 # ─── Stos warstw ─────────────────────────────────────────────────────────
 #
@@ -365,7 +325,7 @@ NETCLASSES = [
     # Odstep zostaje 0,15 mm, bo przy rastrze 0,5 mm i padzie 0,30 mm
     # miedzy sasiednimi przelotkami zostaje 0,20 mm - 0,15 sie miesci
     # i nie ma po co schodzic nizej.
-    ("Plane", 0.30, 0.6, 0.3, 0.15, ["GND", "+3V3"],
+    ("Plane", 0.30, 0.5, 0.3, 0.15, ["GND", "+3V3"],
      {"pcb_color": "rgba(130, 130, 130, 1.000)"}),
     # Wezly przelaczajace przetwornicy. Szerzej nie dlatego, ze plynie tedy
     # wiekszy prad sredni, tylko dlatego, ze plynie SZYBKO: petla cewki
@@ -381,7 +341,7 @@ NETCLASSES = [
     # VDDSMPS -> klucz -> VLXSMPS -> 10 nH -> 10 uH -> VFBSMPS, a nie
     # przekroj. Cala trojka ma zostac na F.Cu, tuz przy ukladzie - jest to
     # ten sam warunek, ktory AN5165 par. 5.3.2 stawia dla SMPS.
-    ("McuSmps", 0.30, 0.6, 0.3, 0.15, ["VLXSMPS", "SMPS_MID", "VFBSMPS"],
+    ("McuSmps", 0.30, 0.5, 0.3, 0.15, ["VLXSMPS", "SMPS_MID", "VFBSMPS"],
      {"pcb_color": "rgba(230, 200, 60, 1.000)"}),
     # Tor nadawczo-odbiorczy 2,4 GHz: `RF1` (procesor -> MLPF) i `ANT`
     # (MLPF -> antena). Mikropasek 50 omow nad plaszczyzna In1 przy stosie
@@ -398,7 +358,7 @@ NETCLASSES = [
     # dlugosc fali w laminacie to ok. 69 mm, wiec kazdy milimetr toru to
     # 1/69 fali. Dlatego MLPF ma stac przy procesorze, a antena przy MLPF -
     # i dlatego AN5165 par. 7 konczy sie uwaga, zeby ten odcinek skracac.
-    ("RF", 0.39, 0.6, 0.3, 0.3, ["RF1", "ANT"], {"pcb_color": "rgba(80, 190, 120, 1.000)"}),
+    ("RF", 0.39, 0.5, 0.3, 0.3, ["RF1", "ANT"], {"pcb_color": "rgba(80, 190, 120, 1.000)"}),
     # Para roznicowa USB 2.0. 0,28 mm przy odstepie 0,15 mm daje 90 omow
     # roznicowo nad plaszczyzna In1 przy stosie wyzej (wymog USB: 90 omow
     # +/-15%, czyli 76,5..103,5).
@@ -419,7 +379,7 @@ NETCLASSES = [
     # siebie odwrocone. Zwarcie A6-B6 i A7-B7 trasuje sie wiec osobno,
     # a para biegnie dopiero stamtad do diody. Klasa daje temu odcinkowi
     # wlasciwa szerokosc i odstep; nie zalatwia za nikogo geometrii gniazda.
-    ("USB", 0.28, 0.6, 0.3, 0.15,
+    ("USB", 0.28, 0.5, 0.3, 0.15,
      ["USB_D_P", "USB_D_N", "USB_CONN_P", "USB_CONN_N"],
      {"diff_pair_width": 0.28, "diff_pair_gap": 0.15,
       "pcb_color": "rgba(70, 130, 220, 1.000)"}),
@@ -621,6 +581,37 @@ def draw_mounting_holes(board: pcbnew.BOARD, w: float, h: float,
     return wynik
 
 
+def sprawdz_przelotki(board: pcbnew.BOARD) -> int:
+    """Pilnuje, zeby zadna przelotka nie miala wiertla ponizej minimum.
+
+    To nie jest kontrola wytrzymalosciowa, tylko CENOWA. W formularzu
+    JLCPCB "Min via hole size/diameter" ma progi 0.3 / 0.25 / 0.2 / 0.15 mm
+    i tylko pierwszy jest bezplatny - jedna zapomniana przelotka 0,25 mm
+    przesuwa cale zamowienie na drozszy prog, a w KiCadzie wyglada
+    dokladnie tak samo jak reszta.
+
+    Nie poprawiamy jej po cichu: przelotki stawia czlowiek przy trasowaniu
+    i to on ma zdecydowac, czy zmienic ja, czy zaplacic. Skrypt ma tylko
+    nie pozwolic, zeby dowiedzial sie o tym z wyceny.
+    """
+    zle = []
+    for t in board.GetTracks():
+        if t.Type() != pcbnew.PCB_VIA_T:
+            continue
+        wiertlo = pcbnew.ToMM(t.GetDrill())
+        if wiertlo < min(VIA_DRILL_MM, PAD_VIA_DRILL_MM) - 1e-6:
+            p = t.GetPosition()
+            zle.append((wiertlo, pcbnew.ToMM(p.x), pcbnew.ToMM(p.y),
+                        t.GetNetname()))
+    if zle:
+        print(f"UWAGA: {len(zle)} przelotek z wiertlem ponizej "
+              f"{min(VIA_DRILL_MM, PAD_VIA_DRILL_MM)} mm - podnosza prog "
+              f"cenowy u JLCPCB:")
+        for w, x, y, siec in zle:
+            print(f"   {w} mm w ({x:.3f}, {y:.3f}) na sieci {siec}")
+    return len(zle)
+
+
 def stitch_thermal_pads(board: pcbnew.BOARD) -> list:
     """Siatka przelotek pod kazdym padem termicznym lezacym na masie.
 
@@ -651,13 +642,19 @@ def stitch_thermal_pads(board: pcbnew.BOARD) -> list:
                 odrzucone.append((fp.GetReference(), pad.GetPadName(), w, h))
 
     # ─── Kasowanie poprzedniej siatki ───
-    # Po POLOZENIU i ROZMIARZE, a nie po jakims znaczniku: przelotka
-    # w KiCadzie nie ma pola, w ktorym dalo by sie zapisac "moja".
+    # Po SAMYM POLOZENIU: kasujemy kazda przelotke lezaca wewnatrz padu
+    # termicznego, niezaleznie od jej rozmiaru. Przelotka w KiCadzie nie ma
+    # pola, w ktorym dalo by sie zapisac "moja", a wnetrze padu termicznego
+    # nalezy do tej funkcji i nic innego nie ma prawa tam stac.
+    #
+    # Pierwsza wersja dopasowywala po wiertle rownym `PAD_VIA_DRILL_MM`
+    # i to byla pulapka: zmiana tej stalej z 0,25 na 0,3 sprawila, ze stara
+    # siatka przestala pasowac do wzorca, nie zostala skasowana i plytka
+    # dostala 29 przelotek PODWOJNIE, jedna w drugiej. Kryterium nie moze
+    # zalezec od wartosci, ktora sie wlasnie zmienia.
     stare = []
     for t in board.GetTracks():
         if t.Type() != pcbnew.PCB_VIA_T:
-            continue
-        if abs(pcbnew.ToMM(t.GetDrill()) - PAD_VIA_DRILL_MM) > 0.001:
             continue
         for _, pad, _, _ in kandydaci:
             if pad.HitTest(t.GetPosition()):
@@ -1179,67 +1176,28 @@ def write_stackup() -> None:
 def set_rules(board: pcbnew.BOARD) -> None:
     """Minima plytki. Musza dopuszczac NAJWEZSZA klase, nie domyslna.
 
-    Gdyby zostaly na 0,15/0,6/0,3, DRC zglaszalby kazda sciezke klasy BGA
-    jako blad - a klasa bez mozliwosci narysowania jej jest dekoracja.
-    Minimum to teraz podloga procesu, a nie to, czym sie zwykle rysuje.
+    Inaczej DRC zglasza jako blad kazda sciezke klasy wezszej od domyslnej,
+    a klasa, ktorej nie da sie narysowac, jest dekoracja.
+
+    Po zejsciu na wiertlo 0,3 mm minimum przelotki to 0,5/0,3, czyli
+    dokladnie to, co zamawiamy u JLCPCB w progu "0.3mm/(0.4/0.45mm)".
+    Gdyby ktos narysowal cieniej, DRC powie o tym ZANIM zobaczy to wycena.
     """
     ds = board.GetDesignSettings()
-    ds.m_MinClearance = mm(min(CLEARANCE_MM, BGA_CLEARANCE_MM))
-    ds.m_TrackMinWidth = mm(min(TRACK_MM, BGA_TRACK_MM))
-    ds.m_ViasMinSize = mm(min(VIA_DIA_MM, BGA_VIA_DIA_MM, PAD_VIA_DIA_MM))
-    ds.m_MinThroughDrill = mm(min(VIA_DRILL_MM, BGA_VIA_DRILL_MM,
-                                  PAD_VIA_DRILL_MM))
+    ds.m_MinClearance = mm(CLEARANCE_MM)
+    ds.m_TrackMinWidth = mm(TRACK_MM)
+    ds.m_ViasMinSize = mm(min(VIA_DIA_MM, PAD_VIA_DIA_MM))
+    ds.m_MinThroughDrill = mm(min(VIA_DRILL_MM, PAD_VIA_DRILL_MM))
     # Pierscien. KiCad trzyma tu domyslne 0,1 mm i tego NIE bylo widac,
     # dopoki przelotki mialy 0,45/0,25 - przy 0,30/0,20 pierscien spada
     # do 0,05 mm i DRC zglasza kazda z 55 kulek. Minimum musi dopuszczac
     # najciensza przelotke na plytce, inaczej jest dekoracja.
     ds.m_ViasMinAnnularWidth = mm(min(
         (VIA_DIA_MM - VIA_DRILL_MM) / 2,
-        (BGA_VIA_DIA_MM - BGA_VIA_DRILL_MM) / 2,
         (PAD_VIA_DIA_MM - PAD_VIA_DRILL_MM) / 2))
     ds.SetCustomTrackWidth(mm(TRACK_MM))
     ds.SetCustomViaSize(mm(VIA_DIA_MM))
     ds.SetCustomViaDrill(mm(VIA_DRILL_MM))
-
-
-def sieci_bga(tekst: str) -> list[str]:
-    """Nazwy sieci wychodzacych z BGA procesora, prosto z pliku plytki.
-
-    Nie z listy w tym pliku, bo taka lista starzeje sie po cichu: dolozenie
-    jednego sygnalu do `mcu.ato` i nikt nie pamieta, zeby dopisac go tutaj.
-    Zrodlem jest sam footprint - jesli siec dotyka kulki, nalezy do klasy.
-
-    Szukane po NAZWIE FOOTPRINTU, a nie po oznaczeniu. Pierwsza wersja
-    brala `U1` i na plytce gornej zlapala zupelnie inny uklad, bo tam
-    `U1` to co innego - oznaczenia sa lokalne dla plytki i przenumerowuja
-    sie przy kazdej przebudowie. Warunkiem jest "BGA" w nazwie obudowy,
-    wiec regula obejmie tez nastepna taka kosc, a nie zlapie obudow LGA
-    czujnikow ani modulow.
-
-    Pomijane sa sieci JEDNOPADOWE. Kazda niepodlaczona kulka dostaje od
-    atopile wlasna siec nazwana jak ona sama ("A1", "F2", ...), a takich
-    jest tu 56. Nie prowadzi z nich ani jedna sciezka, wiec klasa nic by
-    im nie dala, a w pliku projektu zostawilyby piecdziesiat kilka
-    wzorcow-widm, przez ktore nie widac tych prawdziwych.
-
-    Czytane z TEKSTU, a nie przez `pcbnew`: `set_netclasses()` pracuje na
-    pliku projektu, zanim plytka zostanie wczytana, a drugie `LoadBoard()`
-    w jednym procesie zwraca obiekt bez metod (ta sama usterka bindingow,
-    ktora opisuje `sprawdz_kontur`).
-    """
-    # Wciecie MUSI byc dowolne - plik plytki jest zapisany tabulatorami,
-    # a ten, ktory wraca z Quiltera, spacjami. Wzorzec zaczepiony o jedno
-    # z nich nie znajduje ani jednego footprintu i klasa cicho znika.
-    bloki = re.split(r"\n\s*\(footprint ", tekst)[1:]
-    ile_padow = collections.Counter()
-    kulki = set()
-    for blok in bloki:
-        sieci = re.findall(r'\(net \d+ "([^"]*)"', blok)
-        ile_padow.update(sieci)
-        nazwa = blok.split('"')[1] if '"' in blok else ""
-        if "BGA" in nazwa.upper():
-            kulki.update(sieci)
-    return sorted(n for n in kulki if n and ile_padow[n] > 1)
 
 
 def set_netclasses() -> None:
@@ -1275,18 +1233,6 @@ def set_netclasses() -> None:
     on_board = set(re.findall(r'^\s*\(net \d+ "([^"]*)"',
                               PCB.read_text(encoding="utf8"), re.M))
     klasy = list(NETCLASSES)
-    # Klasa BGA nie ma wpisanej listy sieci - liczy sie ja z plytki.
-    # Sieci juz zajete przez klase o WLASNYM uzasadnieniu (zasilanie,
-    # wezel przelaczajacy, para USB) zostaja tam, gdzie sa: one maja
-    # wymagania mocniejsze niz ciasnota pod BGA.
-    zajete = {n for _, _, _, _, _, nets, _ in NETCLASSES for n in nets}
-    bga = [n for n in sieci_bga(PCB.read_text(encoding="utf8"))
-           if n and n not in zajete]
-    if bga:
-        klasy.append(("BGA", BGA_TRACK_MM, BGA_VIA_DIA_MM, BGA_VIA_DRILL_MM,
-                      BGA_CLEARANCE_MM, bga,
-                      {"pcb_color": "rgba(160, 110, 200, 1.000)"}))
-
     used = [(name, track, via, drill, clear,
              [n for n in nets if n in on_board], extra)
             for name, track, via, drill, clear, nets, extra in klasy]
@@ -1341,6 +1287,7 @@ def main() -> None:
     # do miedzi, zeby kasowanie poprzedniej siatki nie kolidowalo
     # z przebudowa wylewek.
     szycie, skasowane = stitch_thermal_pads(board)
+    za_cienkie = sprawdz_przelotki(board)
     board.Save(str(PCB))
     # Kontur sprawdza sie na ZAPISANYM pliku, nie na obiekcie w pamieci.
     # Dwa powody, oba praktyczne: sprawdzamy to, co naprawde pojedzie do
@@ -1369,6 +1316,9 @@ def main() -> None:
               f"raster {kx:.2f} x {ky:.2f} mm" + (f" (skasowano {skasowane} starych)"
               if skasowane else ""))
     print(f"obrys zamkniety: {ksztaltow} ksztaltow, kazdy wierzcholek laczy dwa")
+    if not za_cienkie:
+        print(f"wszystkie przelotki maja wiertlo >= "
+              f"{min(VIA_DRILL_MM, PAD_VIA_DRILL_MM)} mm (bezplatny prog JLCPCB)")
 
 
 if __name__ == "__main__":

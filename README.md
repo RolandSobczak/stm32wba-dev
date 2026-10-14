@@ -100,10 +100,31 @@ jednej nóżki VSS. Pad dostaje **siatkę 5×5 = 25 przelotek** 0,50/0,25 mm
 w rastrze 1,12 mm, stawianą przez `tools/board_setup.py`. Bez niej masa
 procesora wisiałaby na wylewce F.Cu, a płaszczyzna In1 leży 0,2104 mm niżej.
 
-**Przelotki leżą w padzie, więc muszą być zalane.** Wiertło 0,25 mm mieści
-się w zakresie, który JLCPCB zalewa żywicą (POFV), ale na czterech warstwach
-jest to **usługa płatna** — inaczej niż na sześciu, gdzie jest darmowa. Bez
-zalania cyna ucieka przez przelotki w czasie rozpływu.
+**Przelotki leżą w padzie, więc muszą być zalane** — a to kosztuje. Wycena
+JLCPCB (100 × 100 mm, 5 szt., FR-4 1,6 mm, 3–4 dni):
+
+| konfiguracja | Via Covering | Via Plating | razem |
+|---|---|---|---|
+| 4 warstwy, Plugged albo Untented | €0,00 | — | **€7,13** |
+| 4 warstwy, **Epoxy Filled & Capped** | €15,85 | €3,06 | **€26,03** |
+| 6 warstw, Epoxy Filled & Capped (domyślne) | €0,00 | €0,00 | **€28,52** |
+
+Dopłata na czterech warstwach to **€18,91**; „Horizontal Electroless Copper
+Plating" (€3,06) jest przy zalewaniu wymuszone. Sześć warstw wychodzi €2,49
+drożej, ale przy czasie produkcji 8–9 dni zamiast 3–4 (przyspieszenie 6L do
+3–4 dni to +€118,01) i bez możliwości HASL.
+
+**Wszystkie wiertła mają 0,3 mm i ani dziesiątej mniej.** W formularzu
+JLCPCB „Min via hole size/diameter" tylko pierwszy próg — `0.3mm/(0.4/0.45mm)`
+— jest bezpłatny; każdy niższy podnosi cenę całego zamówienia. Dlatego
+przelotka sygnałowa to **0,5/0,3** (a nie 0,6/0,3 jak wcześniej — próg
+dopuszcza średnice od 0,4 mm, więc 0,1 mm wraca na trasowanie), a ta w padzie
+**0,5/0,3** z sufitem narzuconym przez samo JLCPCB: *„Vias should be at most
+0.5 mm in diameter to avoid incomplete filling. Vias violating this size will
+be left unfilled."*
+
+`board_setup.py` sprawdza to przy każdym uruchomieniu i wypisuje każdą
+przelotkę z wiertłem poniżej progu — razem z pozycją i siecią.
 
 Listwy (opis i uzasadnienie kolejności w `headers.ato`):
 
