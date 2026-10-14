@@ -66,6 +66,7 @@ from "mcu.ato" import Stm32Wb55
 from "storage.ato" import SdNandSpi
 from "headers.ato" import PowerDebugHeader
 from "headers.ato" import GpioHeader
+from "debug.ato" import SwdPort
 from "parts/Antenna_IFA_2G4/Antenna_IFA_2G4.ato" import Antenna_IFA_2G4_package
 from "parts/TestPoint_Pad_D1R5/TestPoint_Pad_D1R5.ato" import TestPoint_Pad_D1R5_package
 
@@ -89,6 +90,7 @@ module DevBoard:
     storage = new SdNandSpi
     hdr_power = new PowerDebugHeader
     hdr_gpio = new GpioHeader
+    swd_port = new SwdPort
     antenna = new Antenna_IFA_2G4_package
 
     # ─── Szyna 3V3 ───
@@ -96,6 +98,7 @@ module DevBoard:
     power.power_3v3 ~ storage.power
     power.power_3v3 ~ hdr_power.power
     power.power_3v3 ~ hdr_gpio.power
+    power.power_3v3 ~ swd_port.power
 
     # ─── USB-C: dane i oba wezly CC ───
     power.usb_port.usb2 ~ mcu.usb
@@ -131,9 +134,14 @@ module DevBoard:
     # ─── Listwy ───
     hdr_power.vbus ~ power.usb_port.vbus.hv
     hdr_power.sys ~ power.power_sys.hv
-    hdr_power.swd ~ mcu.swd
-    hdr_power.reset ~ mcu.reset
     hdr_power.boot0 ~ mcu.boot0
+
+    # ─── SWD ───
+    # Osobne zlacze ARM Cortex Debug 2x5, a nie cztery pozycje na listwie.
+    # Cztery pozycje, ktore wczesniej je niosly, zostaja PUSTE - patrz
+    # naglowek `headers.ato`. VTref idzie z szyny 3V3 wyzej.
+    swd_port.swd ~ mcu.swd
+    swd_port.reset ~ mcu.reset
 
     # Dziewiec wolnych nozek. Kolejnosc musi zgadzac sie z tablica
     # w `mcu.ato` - obie opisuja ten sam ciag. Wypisane po jednej, bo

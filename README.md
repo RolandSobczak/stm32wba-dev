@@ -104,14 +104,43 @@ Listwy (opis i uzasadnienie kolejności w `headers.ato`):
 ```
 LEWA (zasilanie + uruchamianie)     PRAWA (wolne nóżki)
  1 VBUS      7 GND                   1 +3V3    7 PA15
- 2 SYS       8 SWCLK                 2 PA2     8 PB5
- 3 +3V3      9 SWO                   3 PA3     9 PB6
+ 2 SYS       8 ——                    2 PA2     8 PB5
+ 3 +3V3      9 ——                    3 PA3     9 PB6
  4 GND      10 GND                   4 PA8    10 PB7
- 5 NRST     11 BOOT0                 5 PA9    11 GND
- 6 SWDIO    12 GND                   6 PA10   12 GND
+ 5 ——       11 BOOT0                 5 PA9    11 GND
+ 6 ——       12 GND                   6 PA10   12 GND
 ```
 
+Pozycje 5, 6, 8 i 9 lewej listwy są **celowo bez sieci**. Niosły SWD, zanim
+na płytkę weszło osobne złącze ARM Cortex Debug 2×5 — sygnały przeniosły się
+tam w całości, a footprint listwy został nietknięty.
+
 Wejście w DFU: zworka z pinu 11 (BOOT0) na pin 3 (+3V3) lewej listwy i reset.
+
+## SWD
+
+**Samtec SHF-105-01-L-D-RA** (`CN1`) — standardowy ARM Cortex Debug Connector
+2×5 w rastrze 1,27 mm, kątowy, przewlekany, w kołnierzu z kluczem. Kabel
+J-Link EDU Mini wchodzi w niego wprost; ten sam kabel obsługuje ST-LINK V2/V3
+i większość sond innych producentów.
+
+```
+1 VTref (+3V3)   2 SWDIO
+3 GND            4 SWCLK
+5 GND            6 SWO
+7 KEY            8 NC (TDI)
+9 NC (TRST)     10 NRST
+```
+
+Dwie masy leżą **między** szybkimi liniami (pin 3 między SWDIO i SWCLK, pin 5
+między SWCLK a SWO), więc każda ma drogę powrotną w sąsiedniej żyle taśmy —
+przy SWO, którym idzie konsola ITM, od tego zależy, przy jakiej częstotliwości
+strumień przestaje się sypać.
+
+**VTref to wejście sondy, nie zasilanie płytki.** J-Link EDU Mini nie zasila
+celu i pobiera z tego pinu mniej niż 170 µA, więc płytka musi być zasilona
+z USB-C albo z ogniwa — inaczej sonda jej nie zobaczy, a wygląda to dokładnie
+jak martwy procesor.
 
 ## Jak to zbudować
 

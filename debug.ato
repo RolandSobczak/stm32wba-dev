@@ -1,0 +1,64 @@
+"""Zlacze SWD - jedyna droga do procesora, ktora dziala przed firmware'em.
+
+Standardowy ARM Cortex Debug Connector 2x5 w rastrze 1,27 mm, katowy,
+w kolnierzu z kluczem (`Samtec SHF-105-01-L-D-RA`). Kabel J-Link EDU Mini
+wchodzi w niego wprost; ten sam kabel obsluguje ST-LINK V2/V3 i wiekszosc
+sond innych producentow, bo to jest standard, a nie czyjs uklad pinow.
+
+Dlaczego osobne zlacze, skoro SWD bylo juz na listwie
+-----------------------------------------------------
+Bylo - na lewej listwie 1x12, na pozycjach 5, 6, 8 i 9, z masami miedzy
+szybkimi liniami. Dzialaloby, ale wymagalo czterech przewodow Dupont
+wpinanych pojedynczo, a przy SWO (konsola ITM) droga powrotna przez
+sasiedni przewod tasiemki jest wyrazniej okreslona niz przez luzny kabel
+obok.
+
+Po dolozeniu tego zlacza **te cztery pozycje na listwie zostaja PUSTE** -
+nie sa przepiete gdzie indziej ani usuniete. Listwa ma nadal dwanascie
+pozycji i ten sam footprint; zmienia sie tylko to, ze cztery z nich nie
+maja sieci. Tak bylo w zamowieniu i tak jest: zlacze przejmuje sygnaly,
+listwa zostaje nietknieta.
+
+Co to znaczy przy uruchamianiu
+------------------------------
+**VTref (pin 1) to wejscie sondy, nie zasilanie plytki.** Podajemy nim
+nasze 3V3 DO programatora, zeby znal poziom logiczny. W druga strone nie
+idzie nic - J-Link EDU Mini nie zasila celu. Plytka musi wiec byc
+zasilona z USB-C albo z ogniwa, inaczej sonda jej nie zobaczy; przy
+pierwszym uruchomieniu wyglada to dokladnie jak martwy procesor.
+
+**Wpiecie na odwrot jest niemozliwe** - kolnierz ma wyciecie kluczujace.
+"""
+
+#pragma experiment("BRIDGE_CONNECT")
+
+import ElectricPower
+import ElectricLogic
+import Electrical
+import SWD
+from "parts/Samtec_SHF_105_01_L_D_RA/Samtec_SHF_105_01_L_D_RA.ato" import Samtec_SHF_105_01_L_D_RA_package
+
+
+module SwdPort:
+    """ARM Cortex Debug 2x5 / 1,27 mm - Samtec SHF-105-01-L-D-RA."""
+    conn = new Samtec_SHF_105_01_L_D_RA_package
+    power = new ElectricPower
+    swd = new SWD
+    reset = new ElectricLogic
+
+    conn.VTREF ~ power.hv
+    conn.SWDIO ~ swd.dio.line
+    conn.GND1 ~ power.lv
+    conn.SWCLK ~ swd.clk.line
+    conn.GND2 ~ power.lv
+    conn.SWO ~ swd.swo.line
+    conn.NRESET ~ reset.line
+
+    # Pin 7 (KEY), 8 (TDI) i 9 (TRST) celowo bez sieci.
+    #
+    # KEY nie jest sygnalem - w kolnierzu jest w tym miejscu wypustka,
+    # a w tasmie zalepiony otwor; to ona uniemozliwia wpiecie na odwrot.
+    #
+    # TDI i TRST naleza do JTAG-a, ktorego ta plytka nie wystawia:
+    # PA15 (JTDI) i PB4 (NJTRST) sa zajete, a pelny JTAG zjadlby piec
+    # nozek z trzydziestu. Sonda i tak rozmawia po SWD.

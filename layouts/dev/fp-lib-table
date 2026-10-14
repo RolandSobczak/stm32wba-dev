@@ -287,4 +287,11 @@
 		(options "")
 		(descr "atopile: part lib: PSA_FMF06FTHR010_LH")
 	)
+	(lib
+		(name "Samtec_SHF_105_01_L_D_RA")
+		(type "KiCad")
+		(uri "${KIPRJMOD}/../../parts/Samtec_SHF_105_01_L_D_RA")
+		(options "")
+		(descr "atopile: part lib: Samtec_SHF_105_01_L_D_RA")
+	)
 )

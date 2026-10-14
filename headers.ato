@@ -43,22 +43,29 @@ trzeba, zeby ja do czegos podlaczyc.
      2  SYS       szyna z ladowarki      2  PA2   LPUART1_TX / ADC_IN7
      3  +3V3                             3  PA3   LPUART1_RX / ADC_IN8
      4  GND                              4  PA8   TIM1_CH1 / ADC_IN15 / MCO
-     5  NRST                             5  PA9   USART1_TX / ADC_IN16
-     6  SWDIO                            6  PA10  USART1_RX
+     5  --        wolna                  5  PA9   USART1_TX / ADC_IN16
+     6  --        wolna                  6  PA10  USART1_RX
      7  GND                              7  PA15  TIM2_CH1
-     8  SWCLK                            8  PB5   LPUART1_TX / SPI1_MOSI
-     9  SWO                              9  PB6   I2C1_SCL / USART1_TX
+     8  --        wolna                  8  PB5   LPUART1_TX / SPI1_MOSI
+     9  --        wolna                  9  PB6   I2C1_SCL / USART1_TX
     10  GND                             10  PB7   I2C1_SDA / USART1_RX
     11  BOOT0                           11  GND
     12  GND                             12  GND
 
-**Masy miedzy szybkimi liniami, a nie na koncu listwy.** Pin 7 lezy
-miedzy SWDIO i SWCLK, pin 10 miedzy SWCLK a SWO - kazda z trzech szybkich
-linii ma droge powrotna w sasiednim przewodzie tasiemki. To ten sam
-argument, dla ktorego `gps_tracker-6l/debug.ato` wybral standardowe
-zlacze ARM 2x5 zamiast wlasnego ukladu pinow, i ma znaczenie przede
-wszystkim dla SWO: tedy idzie konsola ITM i to od drogi powrotnej zalezy,
-przy jakiej czestotliwosci strumien przestaje sie sypac.
+**Cztery pozycje lewej listwy sa PUSTE i tak ma zostac.** Stalo na nich
+SWD (5 NRST, 6 SWDIO, 8 SWCLK, 9 SWO), zanim na plytke weszlo osobne
+zlacze ARM Cortex Debug 2x5 (`debug.ato`). Sygnaly przeniosly sie tam
+w calosci, a te pozycje **nie zostaly zastapione niczym innym ani
+usuniete**: listwa ma nadal dwanascie pozycji i ten sam footprint, tylko
+cztery z nich nie maja sieci.
+
+Jest to decyzja, nie przeoczenie. Przepiecie tam czegokolwiek innego
+oznaczaloby, ze listwa o tym samym ksztalcie niesie w dwoch wersjach
+plytki co innego na tych samych nozkach - a to jest miejsce, w ktore
+czlowiek wpina przewod bez zagladania do dokumentacji.
+
+Masy na pozycjach 4, 7, 10 i 12 zostaja tam, gdzie byly - co trzecia
+pozycja daje droge powrotna kazdemu, kto cos z tej listwy wyprowadzi.
 
 **BOOT0 sasiaduje z +3V3 przez trzy pozycje, nie przez jedna.** Wejscie
 w bootloader to zworka z pinu 11 na pin 3. Gdyby lezaly obok siebie,
@@ -78,30 +85,26 @@ oznacza wepchniecie go w wyjscie przetwornicy w BQ25896.
 import ElectricPower
 import ElectricLogic
 import Electrical
-import SWD
 from "parts/PinHeader_1x12/PinHeader_1x12.ato" import PinHeader_1x12_package
 
 
 module PowerDebugHeader:
-    """Lewa listwa: zasilanie, SWD, reset i BOOT0."""
+    """Lewa listwa: zasilanie, BOOT0 i cztery pozycje celowo puste."""
     conn = new PinHeader_1x12_package
 
     power = new ElectricPower        # +3V3 i masa
     vbus = new Electrical            # z gniazda USB-C
     sys = new Electrical             # szyna SYS z ladowarki
-    swd = new SWD
-    reset = new ElectricLogic
     boot0 = new ElectricLogic
 
     conn.p1 ~ vbus
     conn.p2 ~ sys
     conn.p3 ~ power.hv
     conn.p4 ~ power.lv
-    conn.p5 ~ reset.line
-    conn.p6 ~ swd.dio.line
+    # p5, p6, p8, p9 - BEZ SIECI. Stalo tu SWD; przenioslo sie na zlacze
+    # ARM 2x5 w `debug.ato`. Pozycje zostaja puste swiadomie - patrz
+    # naglowek pliku.
     conn.p7 ~ power.lv
-    conn.p8 ~ swd.clk.line
-    conn.p9 ~ swd.swo.line
     conn.p10 ~ power.lv
     conn.p11 ~ boot0.line
     conn.p12 ~ power.lv
