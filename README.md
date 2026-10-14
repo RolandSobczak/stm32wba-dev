@@ -67,8 +67,8 @@ podmienione — w komentarzach przy nich stoją nowe numery:
 | C346479 bocznik 10 mΩ | **C105362** FMF06FTHR010-LH | stan 0; nowy ma ±1 %, 1 W i TCR ±70 ppm/°C, czyli lepiej niż poprzednik |
 
 Poza BOM-em (kupowane osobno albo niekupowane wcale): dwie listwy goldpinów
-1×12 2,54 mm, cztery pady pomiarowe i antena — ta ostatnia jest kształtem
-miedzi, nie elementem.
+1×12 2,54 mm, złącze SWD Samtec SHF-105-01-L-D-RA, cztery pady pomiarowe
+i antena — ta ostatnia jest kształtem miedzi, nie elementem.
 
 ## Mapa wyprowadzeń
 
