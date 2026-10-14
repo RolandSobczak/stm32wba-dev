@@ -4,7 +4,7 @@ atopile generuje plytke z samymi footprintami i sieciami - bez obrysu,
 na dwoch warstwach i z zerowym odstepem izolacyjnym. Ten skrypt doklada
 reszte, idempotentnie, zeby dalo sie go puscic po kazdym `ato build`.
 
-Przeniesiony z `gps_tracker-6l/tools/board_setup.py`. Wycietе zostaly
+Przeniesiony z `gps_tracker-6l/tools/board_setup.py`. Wyciete zostaly
 wszystkie funkcje obslugujace kanapke z dwoch plytek (wciecie pod kabel
 ogniwa, wciecie pod nozki listwy ekranu, odbijanie ksztaltow z plytki
 dolnej, wciecie pod zlacze SWD) - tutaj plytka jest jedna i prostokatna.
@@ -153,6 +153,41 @@ BGA_VIA_DRILL_MM = 0.20
 # zywica, wiec te przelotki tez sa POFV i pad zostaje plaski.
 PAD_VIA_DIA_MM = 0.50
 PAD_VIA_DRILL_MM = 0.25
+
+# ─── Szycie przelotkami pod padami termicznymi ───────────────────────────
+#
+# Pad pod obudowa ukladu bez nozek nie jest "dobrze byloby go przylutowac" -
+# dla STM32WB55 w UFQFPN-48 jest to **jedyne polaczenie ukladu z masa**,
+# bo ta obudowa nie ma ani jednej nozki VSS. Bez siatki przelotek masa
+# procesora wisi na wylewce F.Cu, a plaszczyzna In1 lezy 0,2104 mm nizej
+# i nie ma jak do niej dojsc.
+#
+# Rodziny wybierane po NAZWIE FOOTPRINTU, nie po oznaczeniu - tak samo jak
+# `sieci_bga` szuka "BGA". Oznaczenia przenumerowuja sie przy kazdej
+# przebudowie, nazwa obudowy nie.
+#
+# Prog powierzchni odsiewa pady sygnalowe od termicznych i przy okazji
+# chroni przed footprintem, ktory ma pad termiczny tylko z nazwy: w tym
+# projekcie `TPS63020DSJR` i `BQ27441DRZT-G1A` maja na jego miejscu
+# zaslepke 0,01 x 0,01 mm (wada odziedziczona po `gps_tracker-6l`).
+# Takiego padu nie da sie uszyc i skrypt mowi o tym glosno, zamiast
+# wiercic przelotki w punkcie.
+#
+# Raster 1,0 mm to kompromis, ktory podaja noty aplikacyjne obu rodzin:
+# gesciej nie poprawia juz rezystancji cieplnej, a zabiera miedz z padu.
+# Przelotki rozklada sie POTEM rownomiernie na dostepnej szerokosci, zeby
+# siegaly mozliwie szeroko - przy odprowadzaniu ciepla liczy sie rozstaw,
+# nie liczba.
+#
+# UWAGA PRODUKCYJNA: te przelotki leza W PADZIE, wiec musza byc zalane.
+# Wiertlo 0,25 mm miesci sie w zakresie, ktory JLCPCB zalewa zywica
+# (POFV), ale na czterech warstwach jest to **usluga platna** - inaczej
+# niz na szesciu, gdzie jest darmowa. Bez zalania cyna ucieka przez
+# przelotki w czasie rozplywu i spoina pod padem wychodzi glodna.
+STITCH_RODZINY = ("QFN", "SON", "DFN")   # obudowy bez nozek
+STITCH_MIN_PAD_MM2 = 2.0                 # mniej = pad sygnalowy, nie termiczny
+STITCH_PITCH_MM = 1.0                    # docelowy raster
+STITCH_MARGIN_MM = 0.25                  # od krawedzi przelotki do krawedzi padu
 
 # ! DLACZEGO TE LICZBY, A NIE INNE.
 #
@@ -584,6 +619,94 @@ def draw_mounting_holes(board: pcbnew.BOARD, w: float, h: float,
         najciensza = min(obwodka_mm(cx, cy, d, w, h, r) for cx, cy in lista)
         wynik.append((opis, d, lista, najciensza))
     return wynik
+
+
+def stitch_thermal_pads(board: pcbnew.BOARD) -> list:
+    """Siatka przelotek pod kazdym padem termicznym lezacym na masie.
+
+    Idempotentne: najpierw kasuje przelotki o rozmiarze `PAD_VIA_*` lezace
+    wewnatrz tych padow, potem rysuje je od nowa. Dzieki temu siatka idzie
+    za rozmieszczeniem - przesuniecie albo obrocenie ukladu przenosi ja
+    razem z nim, a `ato build` jej nie gubi, bo nie jest czescia netlisty.
+
+    Zwraca liste `(oznaczenie, nx, ny, raster_x, raster_y)` do wypisania.
+    """
+    gnd = board.FindNet("GND")
+    if gnd is None:
+        raise SystemExit("na plytce nie ma sieci GND - nie ma czego szyc")
+
+    kandydaci, odrzucone = [], []
+    for fp in board.GetFootprints():
+        nazwa = str(fp.GetFPIDAsString()).upper()
+        if not any(r in nazwa for r in STITCH_RODZINY):
+            continue
+        for pad in fp.Pads():
+            if pad.GetNetname() != "GND":
+                continue
+            w = pcbnew.ToMM(pad.GetSizeX())
+            h = pcbnew.ToMM(pad.GetSizeY())
+            if w * h >= STITCH_MIN_PAD_MM2:
+                kandydaci.append((fp.GetReference(), pad, w, h))
+            elif w * h < 0.1:
+                odrzucone.append((fp.GetReference(), pad.GetPadName(), w, h))
+
+    # ─── Kasowanie poprzedniej siatki ───
+    # Po POLOZENIU i ROZMIARZE, a nie po jakims znaczniku: przelotka
+    # w KiCadzie nie ma pola, w ktorym dalo by sie zapisac "moja".
+    stare = []
+    for t in board.GetTracks():
+        if t.Type() != pcbnew.PCB_VIA_T:
+            continue
+        if abs(pcbnew.ToMM(t.GetDrill()) - PAD_VIA_DRILL_MM) > 0.001:
+            continue
+        for _, pad, _, _ in kandydaci:
+            if pad.HitTest(t.GetPosition()):
+                stare.append(t)
+                break
+    for t in stare:
+        board.Delete(t)
+
+    # ─── Siatka ───
+    wynik = []
+    for ref, pad, w, h in kandydaci:
+        def os(dlugosc):
+            uzyteczna = dlugosc - PAD_VIA_DIA_MM - 2 * STITCH_MARGIN_MM
+            if uzyteczna < 0:
+                return [], 0.0
+            n = int(uzyteczna // STITCH_PITCH_MM) + 1
+            krok = uzyteczna / (n - 1) if n > 1 else 0.0
+            return [-uzyteczna / 2 + i * krok for i in range(n)], krok
+
+        xs, kx = os(w)
+        ys, ky = os(h)
+        if not xs or not ys:
+            raise SystemExit(f"pad termiczny {ref} ma {w} x {h} mm - za malo "
+                             f"na przelotke {PAD_VIA_DIA_MM} mm z marginesem "
+                             f"{STITCH_MARGIN_MM}")
+        kat = pad.GetOrientation().AsRadians()
+        cos_a, sin_a = math.cos(kat), math.sin(kat)
+        srodek = pad.GetPosition()
+        for lx in xs:
+            for ly in ys:
+                x = srodek.x + mm(lx * cos_a + ly * sin_a)
+                y = srodek.y + mm(-lx * sin_a + ly * cos_a)
+                v = pcbnew.PCB_VIA(board)
+                v.SetViaType(pcbnew.VIATYPE_THROUGH)
+                v.SetLayerPair(pcbnew.F_Cu, pcbnew.B_Cu)
+                v.SetPosition(pcbnew.VECTOR2I(int(x), int(y)))
+                # `SetWidth` bez warstwy jest w KiCadzie 9 przestarzale
+                # (przelotka moze miec rozna srednice na kazdej warstwie)
+                # i sypie ostrzezeniem przy kazdym wywolaniu.
+                v.SetWidth(pcbnew.F_Cu, mm(PAD_VIA_DIA_MM))
+                v.SetDrill(mm(PAD_VIA_DRILL_MM))
+                v.SetNet(gnd)
+                board.Add(v)
+        wynik.append((ref, len(xs), len(ys), kx, ky, w, h))
+
+    for ref, nazwa_padu, w, h in odrzucone:
+        print(f"  UWAGA: {ref} pad {nazwa_padu} ma {w:.2f} x {h:.2f} mm - to "
+              f"zaslepka, nie pad termiczny; NIE SZYTY")
+    return wynik, len(stare)
 
 
 def draw_antenna_keepout(board: pcbnew.BOARD) -> tuple | None:
@@ -1214,6 +1337,10 @@ def main() -> None:
     set_zones(board, w, h)
     # PO wylewkach: strefa zakazu ma je przycinac, a nie odwrotnie.
     antena = draw_antenna_keepout(board)
+    # PO strefach: przelotki maja byc ostatnia rzecza dokladana
+    # do miedzi, zeby kasowanie poprzedniej siatki nie kolidowalo
+    # z przebudowa wylewek.
+    szycie, skasowane = stitch_thermal_pads(board)
     board.Save(str(PCB))
     # Kontur sprawdza sie na ZAPISANYM pliku, nie na obiekcie w pamieci.
     # Dwa powody, oba praktyczne: sprawdzamy to, co naprawde pojedzie do
@@ -1236,6 +1363,11 @@ def main() -> None:
               f"wysrodkowana na punkcie zasilania ({x:.2f}, {y:.2f})")
     else:
         print("UWAGA: nie znalazlem footprintu anteny - strefy zakazu NIE MA")
+    for ref, nx, ny, kx, ky, w, h in szycie:
+        print(f"szycie {ref}: {nx}x{ny} = {nx * ny} przelotek "
+              f"{PAD_VIA_DIA_MM}/{PAD_VIA_DRILL_MM} mm w padzie {w:.2f} x {h:.2f}, "
+              f"raster {kx:.2f} x {ky:.2f} mm" + (f" (skasowano {skasowane} starych)"
+              if skasowane else ""))
     print(f"obrys zamkniety: {ksztaltow} ksztaltow, kazdy wierzcholek laczy dwa")
 
 

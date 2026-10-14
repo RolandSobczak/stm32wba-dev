@@ -96,8 +96,14 @@ na prawą listwę.
 ```
 
 **Masa układu jest wyłącznie na padzie pod obudową** — UFQFPN-48 nie ma ani
-jednej nóżki VSS. Pad musi dostać siatkę przelotek do In1, nie jedną
-przelotkę w środku.
+jednej nóżki VSS. Pad dostaje **siatkę 5×5 = 25 przelotek** 0,50/0,25 mm
+w rastrze 1,12 mm, stawianą przez `tools/board_setup.py`. Bez niej masa
+procesora wisiałaby na wylewce F.Cu, a płaszczyzna In1 leży 0,2104 mm niżej.
+
+**Przelotki leżą w padzie, więc muszą być zalane.** Wiertło 0,25 mm mieści
+się w zakresie, który JLCPCB zalewa żywicą (POFV), ale na czterech warstwach
+jest to **usługa płatna** — inaczej niż na sześciu, gdzie jest darmowa. Bez
+zalania cyna ucieka przez przelotki w czasie rozpływu.
 
 Listwy (opis i uzasadnienie kolejności w `headers.ato`):
 
@@ -170,6 +176,11 @@ anteny. Skrypt ustawia:
   gnieździe — przyrostki `_P`/`_N` są warunkiem, żeby KiCad w ogóle
   rozpoznał parę różnicową),
 * **strefę zakazu 15,2 × 5,2 mm pod anteną na wszystkich czterech warstwach**,
+* **szycie przelotkami pod padami termicznymi** obudów bez nóżek (QFN/SON/DFN)
+  leżącymi na masie: `U1` 5×5 = 25 przelotek w padzie 5,50 × 5,50 mm,
+  `U4` 2×2 = 4 w padzie 2,70 × 2,70. Przelotki 0,50/0,25 mm, margines do
+  krawędzi padu 0,25 mm. Siatka idzie za rozmieszczeniem — przesunięcie
+  albo obrócenie układu przenosi ją razem z nim,
 * `net_tie_pad_groups "1, 2"` na antenie, żeby DRC nie zgłaszał zwarcia
   ANT–GND (w antenie typu F to zwarcie jest zamierzone).
 
