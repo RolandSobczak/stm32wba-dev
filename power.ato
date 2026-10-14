@@ -878,7 +878,7 @@ module PowerStack:
     #     nadajnik. Przy skokach pradu radia to najgorsze mozliwe
     #     miejsce na zlacze rozlaczalne.
     #   * Dwa otwory 1,0 mm w szynie, ktora chce byc plaszczyzna -
-    #     a tutaj plaszczyzna zasilania to cale In2.
+    #     a tutaj plaszczyzna zasilania to cale In4.
     #
     # Pomiar poboru pradu nie ginie, tylko zmienia narzedzie: na plytce
     # siedzi BQ27441 z bocznikiem 10 mOhm i mierzy prad ogniwa na biezaco,

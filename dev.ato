@@ -11,8 +11,9 @@
 
 Plytka jest jedna, prostokatna, z otworami M3 w czterech rogach i antena
 w laminacie. Nie ma zlacza miedzyplytkowego, ekranu, GNSS-u ani drugiego
-radia - wszystko, co w `gps_tracker-6l` wymagalo szesciu warstw i kanapki
-z dwoch plytek, tutaj nie wystepuje.
+radia - wszystko, co w `gps_tracker-6l` wymagalo kanapki z dwoch plytek,
+tutaj nie wystepuje. (Warstw jest tu tez szesc, ale z zupelnie innego
+powodu - patrz nizej.)
 
 Co jest przeniesione z trackera, a co nowe
 ------------------------------------------
@@ -20,7 +21,7 @@ Przeniesione prawie bez zmian: **caly tor zasilania** (`power.ato` - to
 samo gniazdo USB-C, ta sama ladowarka BQ25896 z NVDC, ten sam gauge
 z bocznikiem po stronie dodatniej, ta sama przetwornica buck-boost, ta
 sama zlaczka Molex PicoBlade, czyli ten sam pakiet ogniwa wchodzi w obie
-plytki) oraz **stos czterowarstwowy** z `tools/board_setup.py`.
+plytki) oraz **stos** z `tools/board_setup.py` - tu szescowarstwowy.
 
 Nowe: procesor (`mcu.ato`), pamiec (`storage.ato`), listwy
 (`headers.ato`) i antena.
@@ -31,11 +32,20 @@ zrodla odczytuje sie przetwornikiem. Uzasadnienie w naglowku `power.ato`.
 
 Stos i rozmieszczenie
 ---------------------
-Cztery warstwy: **F.Cu elementy i sygnaly krytyczne / In1 masa / In2
-zasilanie / B.Cu sygnaly i wylewka masy**. To nie jest wybor estetyczny -
-AN5165 par. 4.3 opisuje dokladnie taki uklad dla plytek RF na czterech
-warstwach, a dodatkowo masa 0,2104 mm pod F.Cu jest warstwa odniesienia,
-wzgledem ktorej liczy sie tor 50 om (wychodzi 0,3884 mm szerokosci).
+Szesc warstw: **F.Cu elementy i sygnaly krytyczne / In1 masa / In2 i In3
+sygnalowe / In4 zasilanie / B.Cu sygnaly i wylewka masy**. Porzadek nie
+jest estetyczny - AN5165 par. 4.3 opisuje taki uklad dla plytek RF, a masa
+0,2104 mm pod F.Cu jest warstwa odniesienia, wzgledem ktorej liczy sie tor
+50 om (wychodzi 0,3884 mm szerokosci).
+
+Szesc warstw zamiast czterech wybralo za nas zalewanie przelotek: pad masy
+procesora dostaje siatke 25 przelotek, a niezalane przelotki w padzie
+wypijaja wiecej lutu, niz ten pad niesie. Na czterech warstwach zalewanie
+to doplata 18,91 EUR, na szesciu jest w cenie - i wychodzi 2,49 EUR drozej
+niz czterowarstwowa plytka bez zalewania. Rachunek w `README.md`.
+
+In2 i In3 leza 0,2104 mm od siebie, wiec cokolwiek na nich stanie, ma byc
+trasowane ortogonalnie wzgledem siebie.
 
 Z tego wynika rozmieszczenie:
   * **Procesor, oba kwarce, cewka SMPS i cala droga RF stoja na F.Cu**,
@@ -43,19 +53,21 @@ Z tego wynika rozmieszczenie:
     critical signals (for example, RF, XTAL, SMPS)".
   * **Antena na krotszej krawedzi**, wysrodkowana miedzy gornymi otworami
     M3, zwrocona na zewnatrz. Pod nia i wokol niej - strefa bez miedzi na
-    wszystkich czterech warstwach.
+    wszystkich szesciu warstwach.
   * **MLPF tuz przy procesorze**, a odcinek 50 om od niego do anteny tak
     krotki, jak wyjdzie. AN5165 par. 7 konczy sie wprost ta uwaga.
   * **USB-C i zlaczka ogniwa na przeciwnej krotszej krawedzi** - najdalej
     od anteny, jak pozwala plytka. Przewody wychodza z tej samej strony,
     wiec nie kladzie sie ich nad radiatorem.
   * **Listwy wzdluz dluzszych krawedzi.** Ich otwory 1,0 mm przechodza
-    przez obie plaszczyzny, wiec rzad goldpinow jest jednoczesnie rzedem
-    dziur w masie i zasilaniu - stad odstep wylewki 0,2 mm zamiast 0,5
+    przez wszystkie warstwy wewnetrzne, wiec rzad goldpinow jest
+    jednoczesnie rzedem dziur w masie, w zasilaniu i w obu warstwach
+    sygnalowych - stad odstep wylewki 0,2 mm zamiast 0,5
     (`tools/board_setup.py`).
   * **Masa procesora jest tylko na padzie pod obudowa** (UFQFPN-48 nie ma
     ani jednej nozki VSS), wiec ten pad musi dostac siatke przelotek do
-    In1, a nie jedna przelotke w srodku.
+    In1, a nie jedna przelotke w srodku. Przelotki leza w padzie, wiec
+    musza byc zalane - patrz uwaga o stosie wyzej.
 """
 
 #pragma experiment("BRIDGE_CONNECT")

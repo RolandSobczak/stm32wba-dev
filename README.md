@@ -15,7 +15,7 @@ USB-C ──▶ BQ25896 ──┬──▶ SYS ──▶ TPS63020 ──▶ 3V3 
                                   └── I2C1 ─────────────────┘
 ```
 
-Obrys 32,5 × 59,6 mm, cztery warstwy, narożniki R2,0, **dwa zestawy otworów**:
+Obrys 32,5 × 59,6 mm, sześć warstw, narożniki R2,0, **dwa zestawy otworów**:
 cztery M3 (⌀3,2) odsunięte 4,5 mm od krawędzi i cztery ⌀2,0 odziedziczone
 po obrysie 25,8 × 42,2.
 
@@ -31,7 +31,7 @@ w tych plikach wartością, a nie dekoracją:
 | gauge | TI BQ27441-G1A (I2C 0x55), bocznik 10 mΩ po stronie dodatniej | `power.ato` |
 | 3V3 | TI TPS63020, buck-boost | `power.ato` |
 | gniazdo ogniwa | Molex PicoBlade 53261-0371 — **ten sam pakiet wchodzi w obie płytki** | `power.ato` |
-| stos 4-warstwowy | JLC04161H-7628, prepreg 0,2104 mm pod F.Cu | `tools/board_setup.py` |
+| stos | JLC06161H-7628, prepreg 0,2104 mm pod F.Cu | `tools/board_setup.py` |
 | obrys, otwory, wylewki, klasy sieci | — | `tools/board_setup.py` |
 
 Zmieniły się trzy rzeczy i każda ma powód w pliku:
@@ -96,12 +96,18 @@ na prawą listwę.
 ```
 
 **Masa układu jest wyłącznie na padzie pod obudową** — UFQFPN-48 nie ma ani
-jednej nóżki VSS. Pad dostaje **siatkę 5×5 = 25 przelotek** 0,50/0,25 mm
+jednej nóżki VSS. Pad dostaje **siatkę 5×5 = 25 przelotek** 0,50/0,30 mm
 w rastrze 1,12 mm, stawianą przez `tools/board_setup.py`. Bez niej masa
 procesora wisiałaby na wylewce F.Cu, a płaszczyzna In1 leży 0,2104 mm niżej.
 
-**Przelotki leżą w padzie, więc muszą być zalane** — a to kosztuje. Wycena
-JLCPCB (100 × 100 mm, 5 szt., FR-4 1,6 mm, 3–4 dni):
+**Przelotki leżą w padzie, więc muszą być zalane — i to przesądziło o liczbie
+warstw.** Kanał przelotki ⌀0,3 przez laminat 1,6 mm ma 0,113 mm³; na padzie
+5,5 × 5,5 mm leży przy szablonie 0,12 mm i pokryciu 60 % około 1,09 mm³
+solderu. Czyli **już dziewięć otwartych przelotek ma pojemność porównywalną
+z całym solderem**, a dwadzieścia pięć — dwa i pół raza większą. Niezalana
+siatka oznacza zagłodzoną spoinę, a tu jest to jedyna masa układu.
+
+Wycena JLCPCB (100 × 100 mm, 5 szt., FR-4 1,6 mm):
 
 | konfiguracja | Via Covering | Via Plating | razem |
 |---|---|---|---|
@@ -110,9 +116,14 @@ JLCPCB (100 × 100 mm, 5 szt., FR-4 1,6 mm, 3–4 dni):
 | 6 warstw, Epoxy Filled & Capped (domyślne) | €0,00 | €0,00 | **€28,52** |
 
 Dopłata na czterech warstwach to **€18,91**; „Horizontal Electroless Copper
-Plating" (€3,06) jest przy zalewaniu wymuszone. Sześć warstw wychodzi €2,49
-drożej, ale przy czasie produkcji 8–9 dni zamiast 3–4 (przyspieszenie 6L do
-3–4 dni to +€118,01) i bez możliwości HASL.
+Plating" (€3,06) jest przy zalewaniu wymuszone. **Stąd sześć warstw**: za
+€2,49 różnicy zalewanie wchodzi w cenę, a przy okazji dochodzą dwie warstwy
+sygnałowe (In2, In3).
+
+Dwa haczyki, oba przy zamawianiu, nie w pliku płytki: produkcja trwa **8–9
+dni** zamiast 3–4 (skrócenie do 3–4 kosztuje €118,01), a sześć warstw **nie
+obsługuje HASL** — zostaje OSP albo ENIG. Przy rastrze 0,5 mm i padzie
+termicznym ENIG i tak jest sensowniejszy, bo daje płaskie pady.
 
 **Wszystkie wiertła mają 0,3 mm i ani dziesiątej mniej.** W formularzu
 JLCPCB „Min via hole size/diameter" tylko pierwszy próg — `0.3mm/(0.4/0.45mm)`
@@ -184,22 +195,22 @@ distrobox enter -n atopile -- python3 tools/board_setup.py
 `ato build` — `ato` nadpisuje plik płytki i gubi przy tym `net_tie_pad_groups`
 anteny. Skrypt ustawia:
 
-* stos 4-warstwowy (In1 = `GND`, In2 = `PWR`), bez niego tor RF liczyłby się
-  na ~120 Ω zamiast 50,
+* stos 6-warstwowy (In1 = `GND`, **In4** = `PWR`, In2/In3 sygnałowe), bez niego
+  tor RF liczyłby się na ~120 Ω zamiast 50,
 * obrys 32,5 × 59,6 mm z narożnikami R2,0, lewym górnym rogiem w (8,41 / 3,30),
   i dwa zestawy otworów nieplaterowanych: **4 × ⌀3,2 (M3)** odsunięte 4,5 mm
   od obu krawędzi oraz **4 × ⌀2,0** odziedziczone po obrysie 25,8 × 42,2,
   w stałych miejscach (10,18 / 4,70), (33,18 / 4,70), (10,18 / 44,10),
   (33,18 / 44,10). Najcieńsza obwódka laminatu w całym komplecie: 0,36 mm,
-* wylewki masy na F.Cu i B.Cu, płaszczyzny na In1/In2,
+* wylewki masy na F.Cu i B.Cu, płaszczyzny na In1 i In4,
 * klasy sieci — m.in. **RF 0,39 mm** (`RF1`, `ANT`) i **USB 0,28 mm**
   (`USB_D_P`/`USB_D_N` przy procesorze, `USB_CONN_P`/`USB_CONN_N` przy
   gnieździe — przyrostki `_P`/`_N` są warunkiem, żeby KiCad w ogóle
   rozpoznał parę różnicową),
-* **strefę zakazu 15,2 × 5,2 mm pod anteną na wszystkich czterech warstwach**,
+* **strefę zakazu 15,2 × 5,2 mm pod anteną na wszystkich sześciu warstwach**,
 * **szycie przelotkami pod padami termicznymi** obudów bez nóżek (QFN/SON/DFN)
   leżącymi na masie: `U1` 5×5 = 25 przelotek w padzie 5,50 × 5,50 mm,
-  `U4` 2×2 = 4 w padzie 2,70 × 2,70. Przelotki 0,50/0,25 mm, margines do
+  `U4` 2×2 = 4 w padzie 2,70 × 2,70. Przelotki 0,50/0,30 mm, margines do
   krawędzi padu 0,25 mm. Siatka idzie za rozmieszczeniem — przesunięcie
   albo obrócenie układu przenosi ją razem z nim,
 * `net_tie_pad_groups "1, 2"` na antenie, żeby DRC nie zgłaszał zwarcia

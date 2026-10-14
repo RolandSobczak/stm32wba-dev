@@ -194,7 +194,7 @@ PREPREG_H_MM = 0.2104    # F.Cu -> In1 (masa) - warstwa odniesienia dla RF
 PREPREG_ER = 4.4
 CU_ZEWN_MM = 0.035       # 1 oz
 CU_WEWN_MM = 0.0152      # 0,5 oz
-RDZEN_4W_MM, RDZEN_4W_ER = 1.065, 4.6
+RDZEN_6W_MM, RDZEN_6W_ER = 0.400, 4.36
 
 # ─── Stos warstw ─────────────────────────────────────────────────────────
 #
@@ -220,44 +220,55 @@ RDZEN_4W_MM, RDZEN_4W_ER = 1.065, 4.6
 # Szesc warstw doklada In2 i In3 jako czyste warstwy sygnalowe, czyli
 # podwaja miejsce na trasowanie.
 STOSY = {
-    # JLC04161H-7628. Suma: 0,035 + 0,2104 + 0,0152 + 1,065 + 0,0152
-    #                     + 0,2104 + 0,035 = 1,5862 mm (z maskami 1,6062).
+    # JLC06161H-7628. Suma: 2 x 0,035 + 4 x 0,0152 + 3 x 0,2104 + 2 x 0,4
+    #                     = 1,5620 mm, plus 2 x 0,01 mm maski = 1,5820 mm.
     #
-    # Ten sam stos, co plytka `head` w trackerze, i pokrywa sie z tym, co
-    # AN5165 par. 4.3 zaleca dla plytek RF na czterech warstwach:
-    # gora - elementy i sygnaly krytyczne, In1 - lita masa, In2 - zasilanie,
-    # dol - sygnaly i wylewka masy.
+    # SZESC warstw, nie cztery, i decyzja jest cenowa, nie trasowa.
+    # Przelotki szyjace pad pod WB55 leza W PADZIE, wiec musza byc zalane -
+    # inaczej kanaly wypijaja soldera wiecej, niz w ogole bylo na padzie
+    # (9 otwartych przelotek 0,3/1,6 mm to 1,02 mm3 pojemnosci wobec
+    # ok. 1,09 mm3 soldera z pasty). Zalewanie na czterech warstwach jest
+    # usluga platna: "Via Covering: Epoxy Filled & Capped" 15,85 EUR plus
+    # wymuszone "Horizontal Electroless Copper Plating" 3,06 - razem 18,91
+    # i cena zamowienia idzie z 7,13 na 26,03 EUR. Na szesciu warstwach
+    # ten sam proces jest DOMYSLNY, a zamowienie kosztuje 28,52 EUR.
+    # Za 2,49 EUR roznicy dostajemy dwie warstwy sygnalowe wiecej.
+    # (Wycena JLCPCB, 100 x 100 mm, 5 szt., pazdziernik 2026.)
     #
-    # Warstwa odniesienia dla F.Cu lezy 0,2104 mm nizej i to z niej wynika
-    # szerokosc toru 50 om (0,3884 mm). Bez tego bloku plik opisywalby
-    # plytke DWUWARSTWOWA mimo czterech warstw w tabeli, odniesienie
-    # spadloby na 1,51 mm i ten sam pasek mialby ok. 120 omow.
+    # Cena ma dwa haczyki, oba poza plikiem plytki: produkcja trwa 8-9 dni
+    # zamiast 3-4 (skrocenie do 3-4 kosztuje 118,01 EUR), a szesc warstw
+    # NIE OBSLUGUJE HASL - zostaje OSP albo ENIG.
+    #
+    # Preszpan F.Cu -> In1 zostaje 0,2104 mm, taki sam jak w stosie
+    # czterowarstwowym, wiec szerokosci klas `RF` i `USB` sie NIE ZMIENIAJA:
+    # tor 50 om to nadal 0,3884 mm. To jedyny powod, dla ktorego ta zmiana
+    # nie pociaga za soba przeliczania toru antenowego.
     "dev": [
         ("F.Cu", "copper", CU_ZEWN_MM, None, None),
         ("dielectric 1", "prepreg", PREPREG_H_MM, "FR4", PREPREG_ER),
         ("In1.Cu", "copper", CU_WEWN_MM, None, None),
-        ("dielectric 2", "core", RDZEN_4W_MM, "FR4", RDZEN_4W_ER),
+        ("dielectric 2", "core", RDZEN_6W_MM, "FR4", RDZEN_6W_ER),
         ("In2.Cu", "copper", CU_WEWN_MM, None, None),
         ("dielectric 3", "prepreg", PREPREG_H_MM, "FR4", PREPREG_ER),
+        ("In3.Cu", "copper", CU_WEWN_MM, None, None),
+        ("dielectric 4", "core", RDZEN_6W_MM, "FR4", RDZEN_6W_ER),
+        ("In4.Cu", "copper", CU_WEWN_MM, None, None),
+        ("dielectric 5", "prepreg", PREPREG_H_MM, "FR4", PREPREG_ER),
         ("B.Cu", "copper", CU_ZEWN_MM, None, None),
     ],
 }
 
-# Ktora warstwa niesie ktora plaszczyzne. Warstwy wewnetrzne, ktorych tu
-# nie ma, sa sygnalowe i maja zostac puste dla trasowania.
+# Zasilanie siedzi na In4, a nie na In2, i to nie jest dowolne: obie warstwy
+# sygnalowe maja wtedy plaszczyzne po jednej stronie - In2 mase In1, In3
+# zasilanie In4 - i zadna nie sasiaduje z warstwa zewnetrzna. Sasiaduja za to
+# ze soba, w odleglosci 0,2104 mm, wiec trasuje sie je prostopadle: jedna
+# glownie w X, druga glownie w Y. Inaczej dlugie rownolegle odcinki zaczynaja
+# sie przesluchiwac.
 #
-# Na `base` zasilanie przenosi sie z In2 na In4, zeby obie warstwy
-# sygnalowe lezaly MIEDZY plaszczyznami: In2 ma odniesienie w masie In1,
-# In3 w zasilaniu In4, i zadna nie sasiaduje z warstwa zewnetrzna.
-# Sasiaduja za to ze soba, w odleglosci 0,2104 mm - dwie warstwy sygnalowe
-# tak blisko siebie trasuje sie prostopadle (jedna glownie w X, druga
-# glownie w Y), inaczej dlugie rownolegle odcinki zaczynaja sie
-# przesluchiwac.
-#
-# Masa zostaje na In1 i to nie jest dowolne: tor RF i para USB sa
+# Masa zostaje na In1 i to jest warunek, nie wybor: tor RF i para USB sa
 # policzone jako mikropasek nad plaszczyzna lezaca 0,2104 mm pod F.Cu.
 PLASZCZYZNY = {
-    "dev": {"GND": "In1.Cu", "+3V3": "In2.Cu"},
+    "dev": {"GND": "In1.Cu", "+3V3": "In4.Cu"},
 }
 
 # Nazwa uzytkownika nadawana warstwie niosacej dana plaszczyzne. Jest
