@@ -1313,12 +1313,39 @@ def set_netclasses() -> None:
         print("  bez sieci na tej plytce, pominiete: " + ", ".join(pominiete))
 
 
+def sprawdz_czy_kicad_nie_trzyma_plytki() -> None:
+    """Odmawia pracy, gdy plytka jest otwarta w pcbnew.
+
+    Ten skrypt nadpisuje plik plytki. pcbnew trzyma w pamieci WLASNA kopie
+    i zapisuje ja przy najblizszym zapisie albo autozapisie - czyli po
+    cichu cofa wszystko, co tu powstalo. Raz juz tak zginela podmiana
+    obudowy ekspandera: proces `kicad` (menedzer projektu) zostal
+    zamkniety, ale `pcbnew` z otwarta plytka zyl dalej i kilka minut
+    pozniej zapisal swoja wersje na dysk.
+
+    KiCad zaklada przy otwartej plytce pliki blokady obok niej. Ich
+    obecnosc jest jedynym tanim sygnalem, ze ktos ma ten plik w reku.
+    """
+    katalog = PCB.parent
+    blokady = sorted(
+        p.name for p in katalog.glob("*.lck")
+        if PCB.stem in p.name or p.name.startswith("~")
+    )
+    if blokady:
+        raise SystemExit(
+            "plytka jest otwarta w KiCadzie - zamknij pcbnew i powtorz.\n"
+            f"  blokady w {katalog}: {', '.join(blokady)}\n"
+            "  (ten skrypt nadpisuje plik; pcbnew zapisalby na to swoja "
+            "kopie sprzed zmian)")
+
+
 def main() -> None:
     w = float(sys.argv[1]) if len(sys.argv) > 1 else DEFAULT_W_MM
     h = float(sys.argv[2]) if len(sys.argv) > 2 else DEFAULT_H_MM
     if max(w, h) >= 100:
         raise SystemExit(f"{w} x {h} mm - powyzej 100 mm cena panelu skacze")
 
+    sprawdz_czy_kicad_nie_trzyma_plytki()
     prune_fp_lib_table()
     set_netclasses()
     board = pcbnew.LoadBoard(str(PCB))
