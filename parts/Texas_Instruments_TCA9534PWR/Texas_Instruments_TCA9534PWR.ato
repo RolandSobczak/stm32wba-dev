@@ -1,0 +1,31 @@
+import has_designator_prefix
+import has_part_picked
+import is_atomic_part
+import is_auto_generated
+
+component Texas_Instruments_TCA9534PWR_package:
+    # This trait marks this file as auto-generated
+    # If you want to manually change it, remove the trait
+    trait is_auto_generated<system="ato_part", source="easyeda:C783615", date="2026-10-15T14:03:25.210008+00:00", checksum="29b22f6038c531f8a779ed41d98415dfd274b72aeabd0301ce7cf8b58f6e5127">
+
+    trait is_atomic_part<manufacturer="Texas Instruments", partnumber="TCA9534PWR", footprint="TSSOP-16_L5.0-W4.4-P0.65-LS6.4-BL.kicad_mod", symbol="TCA9534PWR.kicad_sym", model="TSSOP-16_L5.0-W4.4-H1.0-LS6.4-P0.65.step">
+    trait has_part_picked::by_supplier<supplier_id="lcsc", supplier_partno="C783615", manufacturer="Texas Instruments", partno="TCA9534PWR">
+    trait has_designator_prefix<prefix="U">
+
+    # pins
+    signal A0 ~ pin 1
+    signal A1 ~ pin 2
+    signal A2 ~ pin 3
+    signal GND ~ pin 8
+    signal P0 ~ pin 4
+    signal P1 ~ pin 5
+    signal P2 ~ pin 6
+    signal P3 ~ pin 7
+    signal P4 ~ pin 9
+    signal P5 ~ pin 10
+    signal P6 ~ pin 11
+    signal P7 ~ pin 12
+    signal SCL ~ pin 14
+    signal SDA ~ pin 15
+    signal VCC ~ pin 16
+    signal nINT ~ pin 13

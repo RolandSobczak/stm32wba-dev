@@ -81,9 +81,10 @@ from "storage.ato" import SdNandSpi
 from "headers.ato" import PowerDebugHeader
 from "headers.ato" import GpioHeader
 from "debug.ato" import SwdPort
+from "ui.ato" import SystemButtons
+from "ui.ato" import IoExpander
 from "parts/Antenna_IFA_2G4/Antenna_IFA_2G4.ato" import Antenna_IFA_2G4_package
 from "parts/TestPoint_Pad_D1R5/TestPoint_Pad_D1R5.ato" import TestPoint_Pad_D1R5_package
-from "parts/Foshan_NationStar_Optoelectronics_NCD1206R1/Foshan_NationStar_Optoelectronics_NCD1206R1.ato" import Foshan_NationStar_Optoelectronics_NCD1206R1_package
 
 
 module ProbePoint:
@@ -97,42 +98,6 @@ module ProbePoint:
     pad = new TestPoint_Pad_D1R5_package
     node = new Electrical
     node ~ pad.p1
-
-
-module UserLed:
-    """Dioda uzytkownika na PB5 - jedyna rzecz na plytce, ktora widac golym okiem.
-
-    Dev board bez diody to plytka, na ktorej nie da sie stwierdzic, czy
-    firmware w ogole wystartowal, bez podpinania sondy. Tu jest po to
-    jedno wyprowadzenie - i akurat to, ktore na nic innego sie nie
-    przydawalo (uzasadnienie w `headers.ato`).
-
-    Nozka **podaje** prad: PB5 -> rezystor -> anoda, katoda na mase.
-    Wysoki stan swieci. Przy stanie wysokiej impedancji - czyli przy
-    resecie i zanim firmware tknie GPIO - diody nie ma czym zasilic, wiec
-    gasnie sama. Konfiguracja odwrotna (z +3V3 przez diode do nozki)
-    swiecilaby tak samo, ale "zapalone = nisko" to pulapka przy czytaniu
-    kodu.
-
-    1 kOhm przy czerwonej diodzie (Vf ok. 1,9 V) daje **1,4 mA**. To malo
-    jak na LED i duzo jak na wskaznik: NCD1206R1 przy 1,4 mA widac w
-    oswietlonym pokoju, a 4,6 mW nie liczy sie przy niczym, co ta plytka
-    robi. Procesor zniosby 20 mA, ale ta plytka chodzi z ogniwa.
-
-    Obudowa 1206, nie 0603 - jedyny taki element na plytce poza
-    bocznikiem. Powod jest ten sam, co przy padach pamieci: ma sie dac
-    polutowac grotem bez mikroskopu.
-    """
-    led = new Foshan_NationStar_Optoelectronics_NCD1206R1_package
-    resistor = new Resistor
-    resistor.resistance = 1kohm +/- 1%
-    resistor.package = "0603"
-
-    drive = new ElectricLogic        # z GPIO procesora
-    gnd = new Electrical
-
-    drive.line ~> resistor ~> led.A
-    led.K ~ gnd
 
 
 module DevBoard:
@@ -220,10 +185,22 @@ module DevBoard:
     hdr_gpio.spare[5] ~ mcu.spare[5]    # listwa 9  <- PB6   USART1_TX alt
     hdr_gpio.spare[6] ~ mcu.spare[6]    # listwa 10 <- PB7   USART1_RX alt
 
-    # ─── Dioda uzytkownika ───
-    user_led = new UserLed
-    user_led.drive ~ mcu.led
-    user_led.gnd ~ power.power_3v3.lv
+    # ─── Przyciski systemowe ───
+    # RESET i BOOT0 wprost na linie, ktore i tak sa na plytce. Nie
+    # kosztuja ani jednej nozki procesora - NRST i BOOT0 to nie GPIO.
+    buttons = new SystemButtons
+    buttons.power ~ power.power_3v3
+    buttons.reset ~ mcu.reset
+    buttons.boot0 ~ mcu.boot0
+
+    # ─── Ekspander I/O ───
+    # Trzy diody i dwa przyciski uzytkownika za cene jednej nozki
+    # procesora. Siedzi na magistrali zasilania pod adresem 0x20, czyli
+    # daleko od ladowarki (0x6B) i gauge'a (0x55).
+    expander = new IoExpander
+    expander.power ~ power.power_3v3
+    expander.i2c ~ power.pmic_i2c
+    expander.interrupt ~ mcu.expander_interrupt
 
     # ─── Punkty pomiarowe ───
     # Tylko te wezly, ktorych nie ma na listwach. Reszty dotyka sie

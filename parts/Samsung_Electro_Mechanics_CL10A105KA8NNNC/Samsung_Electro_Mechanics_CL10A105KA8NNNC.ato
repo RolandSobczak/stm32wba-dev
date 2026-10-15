@@ -8,7 +8,7 @@ component Samsung_Electro_Mechanics_CL10A105KA8NNNC_package:
 
     # This trait marks this file as auto-generated
     # If you want to manually change it, remove the trait
-    trait is_auto_generated<system="ato_part", source="easyeda:C5673", date="2026-10-15T10:20:19.517190+00:00", checksum="7484db731e8a951b1f2f83bae3081dd58eab70ffe79bd24a97c9b5a3486dbc4a">
+    trait is_auto_generated<system="ato_part", source="easyeda:C5673", date="2026-10-15T14:23:36.341642+00:00", checksum="465b266d131b61104acc1bec4934744ac1a4e09b23cd51e31743e62c38b6c011">
 
     trait is_atomic_part<manufacturer="Samsung Electro-Mechanics", partnumber="CL10A105KA8NNNC", footprint="C0603.kicad_mod", symbol="CL10A105KA8NNNC.kicad_sym", model="C0603_L1.6-W0.8-H0.8.step">
     trait has_part_picked::by_supplier<supplier_id="lcsc", supplier_partno="C5673", manufacturer="Samsung Electro-Mechanics", partno="CL10A105KA8NNNC">

@@ -196,15 +196,65 @@ wyprodukowanej sztuki**, a takiej nie ma.
 
 Wejście w DFU: zworka z pinu 11 (BOOT0) na pin 3 (+3V3) lewej listwy i reset.
 
-### Dioda użytkownika
+## Przyciski i diody
 
-PB5 wypadła z listew, bo sygnałów było czternaście na trzynaście pozycji —
-i wypadła nie przypadkiem: wszystkie jej funkcje magistralowe stoją już na
-innych nóżkach (`LPUART1_TX` na PA2, `SPI1_MOSI` na PA7, `USART1_CK` na PA8).
-Dostała czerwoną diodę 1206 (`NCD1206R1`, C84270) przez 1 kΩ (C21190), czyli
-**1,4 mA** — widać ją w oświetlonym pokoju, a 4,6 mW nie liczy się przy
-niczym, co ta płytka robi. Nóżka podaje prąd, więc wysoki stan świeci,
-a przy resecie dioda gaśnie sama.
+Opis i uzasadnienia w `ui.ato`. Dwie warstwy, bo dwie klasy problemów.
+
+### Przyciski systemowe — zero nóżek procesora
+
+| przycisk | podłączenie | co już było na płytce |
+|---|---|---|
+| **RESET** (`SW1`) | NRST → masa | 100 nF + 100 k podciągnięcie z `mcu.ato` |
+| **BOOT0** (`SW2`) | BOOT0 → +3V3 | 10 k ściągnięcie z `mcu.ato` |
+
+NRST i BOOT0 to nie GPIO, więc te przyciski nie kosztują ani jednego
+wyprowadzenia. Nie wprowadzają też **ani jednej nowej sieci** — obie
+końcówki wiszą na `NRST`, `BOOT0`, `GND` i `+3V3`. Gest jest standardowy:
+trzymasz BOOT0, stukasz RESET, jesteś w bootloaderze. Wcześniej reset
+wymagał zwarcia pinów listwy albo odcięcia zasilania, a DFU — drutu z J2-11
+na J2-3.
+
+Przycisk: **C&K KMR221GLFS** (C72443), gull-wing, 4,6 × 2,8 × 1,9 mm,
+50 mA / 100 000 cykli. Ekran (nóżka 5) idzie na masę — nielutowany zbiera
+ładunek z palca i oddaje go w sygnał, co przy RESET oznacza płytkę
+resetującą się od dotknięcia obok.
+
+Rezystora 100 Ω szeregowo przy RESET **nie ma świadomie**: przycisk zwiera
+naładowane 100 nF przez styki, co je powoli eroduje, ale AN2586 i wszystkie
+płytki Nucleo oraz Discovery łączą go wprost.
+
+### Ekspander I/O — TCA9534PWR
+
+TSSOP-16 (LCSC C783615), na magistrali zasilania pod **adresem 0x20**
+(A2/A1/A0 na masie), czyli daleko od ładowarki `0x6B` i gauge'a `0x55`.
+
+```
+P0  dioda czerwona      P4  przycisk użytkownika 1
+P1  dioda zielona       P5  10 k do masy (zapas)
+P2  dioda czerwona      P6  10 k do masy (zapas)
+P3  przycisk użytk. 0   P7  10 k do masy (zapas)
+```
+
+Wybrany po trzech liczbach z noty: **wyjścia przeciwsobne** (PCF8574
+podciąga tylko ~100 µA i wymusza logikę „zapalone = nisko"), **1,65–5,5 V**,
+i **0,9 µA w spoczynku** — ta ostatnia przesądziła o rezygnacji z diody
+adresowalnej, bo sterownik WS2812 pobiera rzędu 1 mA nawet zgaszony.
+
+`nINT` jest otwartym drenem i ma własne 10 k; idzie na **PB5**. Przerwanie
+nie potrzebuje żadnej funkcji alternatywnej, a PB5 żadnej użytecznej nie ma
+— stąd para. EXTI budzi ze Stop; ze Standby nie, bo do tego trzeba nóżek
+WKUP, a te są dwie i obie zajęte.
+
+Przyciski mają **podciągnięcia zewnętrzne 10 k**, bo TCA9534 nie ma
+wewnętrznych (prąd wejścia ±1 µA). Zapasowe wyprowadzenia mają ściągnięcia,
+a nie drut do masy: pomyłka w firmware zamienia się wtedy w 330 µA zamiast
+w zwarcie wyjścia, które nota każe ograniczać do 10 mA.
+
+Diody: czerwone `NCD1206R1` (C84270) i zielona `NCD1206C1` (C84273), 1206,
+przez 1 kΩ (C21190) — **1,4 mA**. Uwaga przy podłączaniu: **te dwie diody
+mają odwrotnie numerowane nóżki** (czerwona ma anodę na 1, zielona na 2),
+choć fizycznie obie mają anodę na padzie po prawej. Łączyć po nazwach
+sygnałów, nigdy po numerach.
 
 ## SWD
 

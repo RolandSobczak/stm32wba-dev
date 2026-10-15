@@ -1,0 +1,36 @@
+import has_designator_prefix
+import has_part_picked
+import is_atomic_part
+import is_auto_generated
+
+component Foshan_NationStar_Optoelectronics_NCD1206C1_package:
+    """Foshan NationStar NCD1206C1 - zielona dioda 1206, LCSC C84273.
+
+    Para do `NCD1206R1` - ta sama rodzina, ta sama obudowa, inny kolor.
+
+    **Numeracja nozek jest odwrotna niz w czerwonej i to nie jest blad.**
+    Tu nozka 1 to katoda (`neg`), a 2 anoda (`pos`); w `NCD1206R1` jest
+    na odwrot - 1 to anoda (`A`), 2 katoda (`K`). Sprawdzone w obu
+    footprintach: fizycznie **obie maja anode na padzie po prawej**
+    (x = +1,5 mm), wiec roznica siedzi wylacznie w numerowaniu, nie
+    w geometrii. Lutowane tak samo, opisywane inaczej.
+
+    Z tego wynika jedna zasada przy podlaczaniu: lacz po NAZWACH
+    sygnalow (`A`/`K` wobec `pos`/`neg`), nigdy po numerach nozek.
+
+    Vf zielonej jest wyzsze od czerwonej (ok. 2,0-2,2 V zamiast 1,9), wiec
+    przy tym samym rezystorze swieci slabiej. Na wskazniku to nie ma
+    znaczenia, a dwie wartosci rezystora na dwie diody to dwie pozycje
+    w BOM zamiast jednej.
+    """
+    # This trait marks this file as auto-generated
+    # If you want to manually change it, remove the trait
+    trait is_auto_generated<system="ato_part", source="easyeda:C84273", date="2026-08-22T17:28:51.509811+00:00", checksum="2686d4d5494e11298c3244818e427f10a4ff9389f93f21813841bfd82f7e2967">
+
+    trait is_atomic_part<manufacturer="Foshan NationStar Optoelectronics", partnumber="NCD1206C1", footprint="LED1206-RD.kicad_mod", symbol="FC-3215GHK-570A08.kicad_sym", model="LED1206_INF.step">
+    trait has_part_picked::by_supplier<supplier_id="lcsc", supplier_partno="C84273", manufacturer="Foshan NationStar Optoelectronics", partno="NCD1206C1">
+    trait has_designator_prefix<prefix="LED">
+
+    # pins
+    signal neg ~ pin 1
+    signal pos ~ pin 2

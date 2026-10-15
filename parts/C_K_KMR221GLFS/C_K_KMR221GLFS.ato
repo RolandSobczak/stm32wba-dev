@@ -1,0 +1,40 @@
+import has_designator_prefix
+import has_part_picked
+import is_atomic_part
+
+component C_K_KMR221GLFS_package:
+    """C&K KMR221GLFS - przycisk SMD, gull-wing, 4,6 x 2,8 x 1,9 mm.
+
+    Lacznik SPST-NO, sila 2 N, 50 mA / 32 V. Koncowki gull-wing
+    (wystaja poza obudowe i sa widoczne po zlutowaniu), wiec da sie
+    go wlutowac i sprawdzic reka - w odroznieniu od wersji J-lead.
+
+    Rozklad koncowek, przepisany z symbolu producenta w bibliotece
+    EasyEDA. Grafika symbolu laczy nozki POZIOMYMI kreskami:
+
+        nozki 1 i 2  -> koncowka `a`, zwarte wewnatrz obudowy
+        nozki 3 i 4  -> koncowka `b`, zwarte wewnatrz obudowy
+        nozka 5      -> metalowa pokrywa, elektrycznie osobna
+
+    To jest ta informacja, ktora latwo przeoczyc i zaplacic za nia
+    plytka. W footprincie pady 1 i 3 leza po TEJ SAMEJ stronie obudowy
+    (x = -2,3 mm), a 2 i 4 po drugiej - wyglada wiec, jakby para byla
+    "lewa i prawa". Nie jest. Zwarcie padu 1 z padem 3 daje przycisk
+    wcisniety na stale, a plytka wyglada wtedy na uszkodzona
+    w sposob, ktorego nie widac.
+
+    Plik jest RECZNIE zmieniony wzgledem generatora (stad brak traitu
+    `is_auto_generated`): symbol z LCSC nie nazywa nozek w ogole,
+    a bez nazw ta wiedza nie ma gdzie zamieszkac.
+    """
+
+    trait is_atomic_part<manufacturer="C&K", partnumber="KMR221GLFS", footprint="KEY-SMD_KMR2XXGXXX.kicad_mod", symbol="KMR221GLFS.kicad_sym", model="KEY-SMD_5P-L4.2-W2.8-H1.9-LS4.6-P1.6.step">
+    trait has_part_picked::by_supplier<supplier_id="lcsc", supplier_partno="C72443", manufacturer="C&K", partno="KMR221GLFS">
+    trait has_designator_prefix<prefix="SW">
+
+    # pins
+    signal a ~ pin 1
+    a ~ pin 2
+    signal b ~ pin 3
+    b ~ pin 4
+    signal shield ~ pin 5

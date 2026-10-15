@@ -992,6 +992,40 @@ def set_zones(board: pcbnew.BOARD, w: float, h: float) -> None:
     ruchy = []
     zastane = {}
     maja_plaszczyzne = set()
+
+    def przywroc_siec(z, warstwa):
+        """Oddaje strefie siec, ktora zgubil `ato build`.
+
+        `ato build` przepisuje plik plytki i przy okazji przenumerowuje
+        sieci. Strefy trzymaja siec NUMEREM, nie nazwa, wiec po
+        przebudowie potrafia wskazywac numer, ktorego juz nie ma - i
+        wylewka masy staje sie bezsieciowa wyspa. Na warstwie wewnetrznej
+        widac to od razu (ponizszy `raise`), ale na F.Cu i B.Cu przechodzi
+        po cichu az do DRC.
+
+        Ktora siec przywrocic, wynika jednoznacznie z warstwy: zewnetrzne
+        opisuje WYLEWKI_ZEWNETRZNE, wewnetrzne PLASZCZYZNY.
+        """
+        # Po nazwach warstw tego szukac NIE WOLNO: stos przemianowuje
+        # In1.Cu na "GND", a In4.Cu na "PWR", wiec `GetLayerName` zwraca
+        # etykiete z pliku plytki, a PLASZCZYZNY mowia o nazwach
+        # kanonicznych. Jedyne, co sie zgadza po obu stronach, to numer.
+        nazwa = board.GetLayerName(warstwa)
+        if warstwa in zewnetrzne:
+            chciana = WYLEWKI_ZEWNETRZNE.get(pcbnew.LayerName(warstwa))
+        else:
+            chciana = next((n for n, w in plany.items()
+                            if numery.get(w) == warstwa), None)
+        if chciana is None:
+            return None
+        net = board.FindNet(chciana)
+        if net is None:
+            raise SystemExit(
+                f"na plytce {BOARD} nie ma sieci {chciana!r}, a wylewka na "
+                f"{nazwa} jej potrzebuje")
+        z.SetNet(net)
+        ruchy.append(f"wylewka na {nazwa}: ODZYSKANA siec {chciana}")
+        return chciana
     # Pole laminatu liczone z PODANYCH wymiarow, a nie z
     # `board.GetBoardEdgesBoundingBox()`. To wywolanie na plytce
     # zmodyfikowanej w pamieci (a obrys dorysowalismy przed chwila) zwraca
@@ -1009,6 +1043,8 @@ def set_zones(board: pcbnew.BOARD, w: float, h: float) -> None:
             continue
         warstwy = list(z.GetLayerSet().Seq())
         if len(warstwy) == 1 and warstwy[0] in zewnetrzne:
+            if not z.GetNetname():
+                przywroc_siec(z, warstwy[0])
             zastane[warstwy[0]] = z
             # Zarysow co do zasady nie ruszamy - autorouter potrafi oddac
             # lepszy niz prostokat. Ale zarys mniejszy niz cwierc plytki
@@ -1024,6 +1060,8 @@ def set_zones(board: pcbnew.BOARD, w: float, h: float) -> None:
                     f"{pcbnew.ToMM(zb.GetHeight()):.1f} mm, WYPROSTOWANY")
             continue
         siec = z.GetNetname()
+        if not siec and len(warstwy) == 1:
+            siec = przywroc_siec(z, warstwy[0]) or siec
         if siec not in plany:
             raise SystemExit(
                 f"strefa sieci {siec!r} lezy na warstwie wewnetrznej, a "

@@ -1,0 +1,150 @@
+(footprint "Foshan_NationStar_Optoelectronics_NCD1206C1:LED1206-RD"
+	(version 20241229)
+	(generator "faebryk_convert")
+	(generator_version "v5")
+	(layer "F.Cu")
+	(tedit "5DC5F6A4")
+	(uuid "d54d041f-1782-4d80-9213-99094bc49a88")
+	(property "Reference" "REF**"
+		(at 0 -4)
+		(layer "F.SilkS")
+		(uuid "509abe71-98e5-4cdc-b876-2bf528678bd3")
+		(effects
+			(font
+				(size 1 1)
+				(thickness 0.15)
+			)
+		)
+	)
+	(property "Value" "LED1206-RD"
+		(at 0 4)
+		(layer "F.Fab")
+		(uuid "3c99ddae-1043-4bca-a6cf-63cad46b9c99")
+		(effects
+			(font
+				(size 1 1)
+				(thickness 0.15)
+			)
+		)
+	)
+	(attr smd)
+	(fp_circle
+		(center -1.6 0.8)
+		(end -1.57 0.8)
+		(stroke
+			(width 0.06)
+			(type solid)
+		)
+		(layer "F.Fab")
+		(locked no)
+		(uuid "7e7509e5-336a-4041-bef5-d9b8ede69359")
+	)
+	(fp_line
+		(start -2.59 -0.79)
+		(end -2.59 -0.87)
+		(stroke
+			(width 0.15)
+			(type solid)
+		)
+		(layer "F.SilkS")
+		(layers "F.SilkS")
+		(locked no)
+		(uuid "1cfd3b3e-c938-436b-a536-b3b47f1dcdc2")
+	)
+	(fp_line
+		(start -2.59 -0.87)
+		(end -2.39 -1.07)
+		(stroke
+			(width 0.15)
+			(type solid)
+		)
+		(layer "F.SilkS")
+		(layers "F.SilkS")
+		(locked no)
+		(uuid "a7ace00b-0ac9-4ab8-a749-06ea5198ec9e")
+	)
+	(fp_line
+		(start -2.39 -1.07)
+		(end 2.57 -1.07)
+		(stroke
+			(width 0.15)
+			(type solid)
+		)
+		(layer "F.SilkS")
+		(layers "F.SilkS")
+		(locked no)
+		(uuid "9f4a181f-00d5-40a6-a98d-2fdc6f46f467")
+	)
+	(fp_line
+		(start 2.57 -1.07)
+		(end 2.57 1.04)
+		(stroke
+			(width 0.15)
+			(type solid)
+		)
+		(layer "F.SilkS")
+		(layers "F.SilkS")
+		(locked no)
+		(uuid "c973797f-36e7-4e0a-8567-55629d3fd323")
+	)
+	(fp_line
+		(start 2.57 1.04)
+		(end -2.38 1.04)
+		(stroke
+			(width 0.15)
+			(type solid)
+		)
+		(layer "F.SilkS")
+		(layers "F.SilkS")
+		(locked no)
+		(uuid "2fd5cd58-4932-4321-a9eb-6162e1a121e1")
+	)
+	(fp_line
+		(start -2.59 -0.79)
+		(end -2.59 0.83)
+		(stroke
+			(width 0.15)
+			(type solid)
+		)
+		(layer "F.SilkS")
+		(layers "F.SilkS")
+		(locked no)
+		(uuid "47a63d14-8479-4ee7-85a3-3c4cac44dc2d")
+	)
+	(fp_line
+		(start -2.59 0.83)
+		(end -2.38 1.04)
+		(stroke
+			(width 0.15)
+			(type solid)
+		)
+		(layer "F.SilkS")
+		(layers "F.SilkS")
+		(locked no)
+		(uuid "0a131257-316a-4648-882d-a28273e42a79")
+	)
+	(pad "2" smd rect
+		(at 1.52 0 0)
+		(size 1.63 1.6)
+		(layers "F.Cu" "F.Paste" "F.Mask")
+		(uuid "c0413958-4d09-4e20-947c-e03705dbf232")
+	)
+	(pad "1" smd rect
+		(at -1.52 0 0)
+		(size 1.63 1.6)
+		(layers "F.Cu" "F.Paste" "F.Mask")
+		(uuid "d2e2c839-a263-4445-b1fa-ae503df8f6fb")
+	)
+	(model "${KIPRJMOD}/../../parts/Foshan_NationStar_Optoelectronics_NCD1206C1/LED1206_INF.step"
+		(offset
+			(xyz 0 0 -0)
+		)
+		(scale
+			(xyz 1 1 1)
+		)
+		(rotate
+			(xyz 0 0 0)
+		)
+	)
+	(embedded_fonts no)
+)

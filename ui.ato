@@ -1,0 +1,287 @@
+"""Przyciski i diody - jedyne rzeczy na plytce, ktore dzialaja bez sondy.
+
+Dwie warstwy, bo dwie klasy problemow:
+
+  * **`SystemButtons`** - RESET i BOOT0, podlaczone wprost do linii, ktore
+    i tak juz na plytce sa. **Nie kosztuja ani jednej nozki procesora**,
+    bo NRST i BOOT0 to nie sa GPIO.
+  * **`IoExpander`** - TCA9534 na I2C, a na nim diody i przyciski
+    uzytkownika. Kosztuje jedna nozke (przerwanie) i jeden uklad, za to
+    daje osiem wyprowadzen, ktorych procesor juz nie ma.
+
+Dlaczego przyciski systemowe sa wazniejsze od reszty
+----------------------------------------------------
+To sa dwie najczestsze czynnosci fizyczne przy dev boardzie i obie byly
+dotad niewygodne:
+
+  * **reset** - trzeba bylo zewrzec piny listwy albo odciac zasilanie,
+  * **wejscie w DFU** - drut z J2-11 (BOOT0) na J2-3 (+3V3).
+
+Po dolozeniu dwoch przyciskow jest standardowy gest: **trzymasz BOOT0,
+stukasz RESET, jestes w bootloaderze**. Zero nozek, zero firmware'u.
+
+Oba przyciski korzystaja z elementow, ktore juz stoja w `mcu.ato`:
+
+    NRST    100 nF do masy + 100 k podciagniecie  ->  przycisk zwiera do masy
+    BOOT0   10 k sciagniecie do masy              ->  przycisk podaje +3V3
+
+Dlatego zaden z nich nie potrzebuje wlasnego rezystora. Przy BOOT0
+sciagniecie 10 k ogranicza prad wcisnietego przycisku do 330 uA.
+
+Przycisk RESET zwiera naladowany kondensator 100 nF przez swoje styki.
+Prad szczytowy ogranicza tylko rezystancja stykow, co przy tysiacach
+nacisniec powoli je erodowuje. Rezystor 100 R szeregowo by to usunal, ale
+**nie ma go tu swiadomie**: schemat referencyjny ST (AN2586) i wszystkie
+plytki Nucleo oraz Discovery lacza ten przycisk wprost, a odstepstwo od
+konwencji na plytce, ktora ma byc znajoma, kosztuje wiecej niz zuzyte
+styki. KMR221GLFS jest na 50 mA i 100 000 cykli.
+
+Ekspander
+---------
+**TCA9534PWR** (TSSOP-16, LCSC C783615) - wybrany po trzech cechach:
+
+  * **wyjscia przeciwsobne**, nie quasi-dwukierunkowe jak w PCF8574.
+    Dioda moze wiec wisiec do masy i swiecic przy stanie wysokim, czyli
+    tak, jak czyta sie to w kodzie. PCF8574 podciaga tylko ~100 uA
+    i wymusza odwrotna logike ("zapalone = nisko");
+  * **1,65-5,5 V**, czyli 3,3 V z duzym zapasem;
+  * **0,9 uA w spoczynku** (typ. przy 3,6 V, max 2,2 uA). To jest ta
+    liczba, ktora przesadzila o rezygnacji z diody adresowalnej:
+    sterownik WS2812 pobiera rzedu 1 mA nawet zgaszony, czyli **tysiac
+    razy wiecej** niz caly ten ekspander.
+
+Obciazalnosc wyjsc z noty: **10 mA zrodlowo** (VOH 2,5 V przy 3 V i pelnym
+pradzie), **25 mA do masy**, sumarycznie 80 mA przez VCC i 200 mA przez
+mase. Diody chodza tu na 1,4 mA, wiec nie zblizamy sie do zadnego progu.
+
+**Adres 0x20** (A2/A1/A0 na masie; rodzina zajmuje 0x20-0x27). Zadnej
+kolizji z ladowarka 0x6B ani gauge'em 0x55.
+
+**`nINT` jest otwartym drenem** i ma wlasne podciagniecie 10 k - bez niego
+linia nigdy nie wroci do jedynki. Idzie na **PB5**, nozke zwolniona przy
+planowaniu magistral. Przerwanie nie potrzebuje zadnej funkcji
+alternatywnej, a PB5 zadnej uzytecznej nie ma - stad para idealna.
+Kasuje sie je odczytem rejestru wejsc.
+
+Co siedzi na ktorym wyprowadzeniu
+---------------------------------
+    P0  dioda czerwona      P4  przycisk uzytkownika 1
+    P1  dioda zielona       P5  10 k do masy (zapas)
+    P2  dioda czerwona      P6  10 k do masy (zapas)
+    P3  przycisk uzytk. 0   P7  10 k do masy (zapas)
+
+**Przyciski potrzebuja podciagniecia zewnetrznego.** TCA9534 nie ma
+wewnetrznych (prad wejscia to +/-1 uA), w odroznieniu od PCF8574. Stad
+10 k na kazdym - wcisniecie daje zero.
+
+**Zapasowe wyprowadzenia maja sciagniecie 10 k, a nie goly drut do masy.**
+Po wlaczeniu wszystkie wyprowadzenia TCA9534 sa wejsciami, wiec zwarcie
+ich do masy byloby poprawne - ale jedna pomylka w firmware (ustawienie
+ich jako wyjscia w stanie wysokim) oznaczalaby zwarcie wyjscia, ktore
+nota kaze ograniczac zewnetrznie do 10 mA. Rezystor zamienia ten blad
+w 330 uA. Niepodlaczone wejscie CMOS odpada z innego powodu: plywa
+i podnosi pobor spoczynkowy, czyli psuje dokladnie te 0,9 uA, dla
+ktorych ten uklad zostal wybrany.
+"""
+
+# Kazdy rezystor i kondensator ma tu JAWNY `lcsc_id`, tak jak w reszcie
+# projektu. Samo `package = "0603"` nie wiaze pickera: przy pierwszym
+# przebiegu szesc rezystorow 10 k wyszlo jako FOJAN 0402 od innego
+# producenta, mimo ustawionego pakietu. Na plytce lutowanej recznie
+# roznica miedzy 0603 a 0402 jest odczuwalna, a druga pozycja 10 k w BOM
+# to druga rolka do kupienia.
+
+#pragma experiment("BRIDGE_CONNECT")
+
+import ElectricPower
+import ElectricLogic
+import Electrical
+import Resistor
+import Capacitor
+import I2C
+from "parts/C_K_KMR221GLFS/C_K_KMR221GLFS.ato" import C_K_KMR221GLFS_package
+from "parts/Texas_Instruments_TCA9534PWR/Texas_Instruments_TCA9534PWR.ato" import Texas_Instruments_TCA9534PWR_package
+from "parts/Foshan_NationStar_Optoelectronics_NCD1206R1/Foshan_NationStar_Optoelectronics_NCD1206R1.ato" import Foshan_NationStar_Optoelectronics_NCD1206R1_package
+from "parts/Foshan_NationStar_Optoelectronics_NCD1206C1/Foshan_NationStar_Optoelectronics_NCD1206C1.ato" import Foshan_NationStar_Optoelectronics_NCD1206C1_package
+
+
+module TactSwitch:
+    """KMR221GLFS jako zwykly lacznik - dwie koncowki i ekran na masie.
+
+    Przycisk ma piec nozek, ale tylko dwa wezly: 1-2 zwarte wewnatrz
+    w koncowke `a`, 3-4 w koncowke `b`, 5 to metalowa pokrywa.
+
+    **Pokrywa idzie na mase i to nie jest ozdoba.** Nielutowana zbiera
+    ladunek z palca i oddaje go w przypadkowym momencie w sygnal, ktory
+    ten przycisk obsluguje - a przy RESET oznacza to plytke resetujaca
+    sie od dotkniecia obok.
+    """
+    sw = new C_K_KMR221GLFS_package
+    a = new Electrical
+    b = new Electrical
+    gnd = new Electrical
+
+    sw.a ~ a
+    sw.b ~ b
+    sw.shield ~ gnd
+
+
+module IndicatorLed:
+    """Dioda 1206 z rezystorem szeregowym, zasilana ze strony anody.
+
+    1 kOhm przy 3,3 V i Vf okolo 1,9 V daje **1,4 mA** - widac ja
+    w oswietlonym pokoju, a 4,6 mW nie liczy sie przy niczym, co ta
+    plytka robi. Wyjscie ekspandera uniosloby 10 mA, ale ta plytka
+    chodzi z ogniwa.
+
+    Sterowanie jest po stronie anody: stan wysoki swieci. Po wlaczeniu
+    zasilania wyprowadzenia TCA9534 sa wejsciami, wiec dioda jest ciemna,
+    zanim firmware ja zapali.
+    """
+    resistor = new Resistor
+    resistor.resistance = 1kohm +/- 1%
+    resistor.package = "0603"
+    resistor.lcsc_id = "C21190"  # UNI-ROYAL 0603WAF1001T5E, 1k +/-1% 0603
+
+    drive = new Electrical
+    gnd = new Electrical
+
+    # Wezel miedzy rezystorem a anoda. Bez nazwy atopile wola go
+    # `expander.led_red2-A` i taka etykieta ladowala na plytce - a to
+    # jedyny slad, po ktorym przy trasowaniu poznaje sie, ktora to dioda.
+    anode = new Electrical
+
+
+module RedLed from IndicatorLed:
+    """Czerwona NCD1206R1 - nozka 1 to anoda (`A`)."""
+    led = new Foshan_NationStar_Optoelectronics_NCD1206R1_package
+    drive ~> resistor ~> anode
+    anode ~ led.A
+    led.K ~ gnd
+
+
+module GreenLed from IndicatorLed:
+    """Zielona NCD1206C1 - anoda nazywa sie `pos`, nie `A`. Patrz opis czesci."""
+    led = new Foshan_NationStar_Optoelectronics_NCD1206C1_package
+    drive ~> resistor ~> anode
+    anode ~ led.pos
+    led.neg ~ gnd
+
+
+module SystemButtons:
+    """RESET i BOOT0 - zero nozek procesora, dwie najczestsze czynnosci."""
+    power = new ElectricPower
+    reset = new ElectricLogic     # NRST procesora
+    boot0 = new ElectricLogic     # PH3
+
+    btn_reset = new TactSwitch
+    btn_boot0 = new TactSwitch
+
+    # RESET zwiera NRST do masy. Kondensator 100 nF i podciagniecie 100 k
+    # stoja juz w `mcu.ato` - tutaj nie ma czego dokladac.
+    btn_reset.a ~ reset.line
+    btn_reset.b ~ power.lv
+    btn_reset.gnd ~ power.lv
+
+    # BOOT0 podaje +3V3. Sciagniecie 10 k stoi w `mcu.ato` i ono ustala
+    # stan spoczynkowy oraz ogranicza prad wcisnietego przycisku.
+    btn_boot0.a ~ boot0.line
+    btn_boot0.b ~ power.hv
+    btn_boot0.gnd ~ power.lv
+
+    # Obie koncowki `a` wisza na sieciach, ktore maja juz nazwy z
+    # `mcu.ato` (NRST i BOOT0), wiec tu nie ma czego nazywac. Koncowki
+    # `b` ida w mase i +3V3 - tez nazwane. Przyciski systemowe nie
+    # wprowadzaja ani jednej nowej sieci i to jest ich zaleta.
+
+
+module IoExpander:
+    """TCA9534 na magistrali zasilania - trzy diody, dwa przyciski, trzy zapasy."""
+    ic = new Texas_Instruments_TCA9534PWR_package
+
+    power = new ElectricPower
+    i2c = new I2C
+    interrupt = new ElectricLogic     # nINT -> PB5
+
+    ic.VCC ~ power.hv
+    ic.GND ~ power.lv
+    ic.SCL ~ i2c.scl.line
+    ic.SDA ~ i2c.sda.line
+    ic.nINT ~ interrupt.line
+
+    # Adres 0x20 - wszystkie trzy nozki adresowe na masie.
+    ic.A0 ~ power.lv
+    ic.A1 ~ power.lv
+    ic.A2 ~ power.lv
+
+    decoupling = new Capacitor
+    decoupling.capacitance = 100nF +/- 10%
+    decoupling.package = "0603"
+    decoupling.lcsc_id = "C14663"  # YAGEO CC0603KRX7R9BB104, 100nF X7R 50V
+    power.hv ~> decoupling ~> power.lv
+
+    # nINT jest otwartym drenem - bez tego rezystora linia nie wroci do
+    # jedynki i przerwanie zglosi sie raz, na zawsze.
+    int_pullup = new Resistor
+    int_pullup.resistance = 10kohm +/- 1%
+    int_pullup.package = "0603"
+    int_pullup.lcsc_id = "C98220"  # YAGEO RC0603FR-0710KL, 10k +/-1% 0603
+    power.hv ~> int_pullup ~> interrupt.line
+
+    # ─── Diody ───
+    led_red = new RedLed
+    led_green = new GreenLed
+    led_red2 = new RedLed
+
+    ic.P0 ~ led_red.drive
+    ic.P1 ~ led_green.drive
+    ic.P2 ~ led_red2.drive
+    led_red.gnd ~ power.lv
+    led_green.gnd ~ power.lv
+    led_red2.gnd ~ power.lv
+
+    # ─── Przyciski uzytkownika ───
+    # TCA9534 nie ma podciagniec wewnetrznych, wiec kazdy przycisk ma
+    # wlasne 10 k. Wcisniecie daje zero.
+    btn = new TactSwitch[2]
+    btn_pullups = new Resistor[2]
+    for r in btn_pullups:
+        r.resistance = 10kohm +/- 1%
+        r.package = "0603"
+        r.lcsc_id = "C98220"
+
+    ic.P3 ~ btn[0].a
+    btn[0].b ~ power.lv
+    btn[0].gnd ~ power.lv
+    power.hv ~> btn_pullups[0] ~> ic.P3
+
+    ic.P4 ~ btn[1].a
+    btn[1].b ~ power.lv
+    btn[1].gnd ~ power.lv
+    power.hv ~> btn_pullups[1] ~> ic.P4
+
+    # ─── Zapasowe wyprowadzenia ───
+    # Sciagniete, nie zwarte - uzasadnienie w naglowku pliku.
+    spare_pulldowns = new Resistor[3]
+    for r in spare_pulldowns:
+        r.resistance = 10kohm +/- 1%
+        r.package = "0603"
+        r.lcsc_id = "C98220"
+
+    ic.P5 ~> spare_pulldowns[0] ~> power.lv
+    ic.P6 ~> spare_pulldowns[1] ~> power.lv
+    ic.P7 ~> spare_pulldowns[2] ~> power.lv
+
+    # ─── Nazwy sieci ───
+    # Ten sam powod, co w `mcu.ato`: bez tego na plytce leza etykiety
+    # `drive`, `a`, `expander-drive-1` i `expander.led_red2-A`, czyli
+    # nazwy pol w kodzie, a nie nazwy sygnalow. Przy recznym trasowaniu
+    # to jedyne, co widac przy padzie.
+    led_red.drive.override_net_name = "EXP_LED0"
+    led_green.drive.override_net_name = "EXP_LED1"
+    led_red2.drive.override_net_name = "EXP_LED2"
+    led_red.anode.override_net_name = "LED0_A"
+    led_green.anode.override_net_name = "LED1_A"
+    led_red2.anode.override_net_name = "LED2_A"
+    btn[0].a.override_net_name = "BTN_USR0"
+    btn[1].a.override_net_name = "BTN_USR1"
