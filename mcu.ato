@@ -137,9 +137,25 @@ module Stm32Wb55:
     # ─── Wolne wyprowadzenia na listwe ───
     # Kolejnosc jest ta sama, co na listwie w `headers.ato`, i to jest
     # jedyne miejsce, w ktorym numer indeksu znaczy cos konkretnego.
-    #   0 PA2   1 PA3   2 PA8   3 PA9   4 PA10
-    #   5 PA15  6 PB5   7 PB6   8 PB7
-    spare = new Electrical[9]
+    #   0 PA2   1 PA3   2 PA8   3 PA9   4 PA10   5 PB6   6 PB7
+    #
+    # Siedem, nie dziewiec. PA15 i PB5 wyszly z tej tablicy, bo dostaly
+    # konkretne zadania - patrz nizej.
+    spare = new Electrical[7]
+
+    # ─── PA15: wybor ukladu na magistrali SPI1 ───
+    # Jedyna wolna nozka, ktora umie `SPI1_NSS` (pozostale dwie to PA4
+    # zajete przez SD NAND i PB2 przez CHG_STAT). Stoi na lewej listwie
+    # obok reszty SPI, zeby uklad zewnetrzny wpinalo sie jednym rzedem.
+    ext_cs = new Electrical
+
+    # ─── PB5: dioda uzytkownika ───
+    # PB5 wypadla z listew, bo sygnalow bylo czternascie na trzynascie
+    # pozycji - i wypadla nie przypadkiem. Wszystkie jej funkcje
+    # magistralowe sa juz wyprowadzone gdzie indziej: `LPUART1_TX` na PA2,
+    # `SPI1_MOSI` na PA7, `USART1_CK` na PA8. Jako jedyna wolna nozka nie
+    # wnosila niczego, czego nie ma na innej.
+    led = new ElectricLogic
 
     assert power.voltage within 1.71V to 3.6V
 
@@ -469,10 +485,16 @@ module Stm32Wb55:
     ic.PA8 ~ spare[2]
     ic.PA9 ~ spare[3]
     ic.PA10 ~ spare[4]
-    ic.PA15 ~ spare[5]
-    ic.PB5 ~ spare[6]
-    ic.PB6 ~ spare[7]
-    ic.PB7 ~ spare[8]
+    ic.PB6 ~ spare[5]
+    ic.PB7 ~ spare[6]
+
+    # PA15 wychodzi z resetu jako JTDI, z podciagnieciem. Plytka wystawia
+    # tylko SWD, wiec przestawienie na GPIO nic nie kosztuje - ale przy
+    # starcie ta linia jest podciagnieta i uklad wybrany tym CS-em musi to
+    # przetrzymac. Dla wiekszosci oznacza to "niewybrany", czyli dobrze.
+    ic.PA15 ~ ext_cs
+
+    ic.PB5 ~ led.line
 
     # ════════════════════════════════════════════════════════════
     #  Nazwy sieci
@@ -503,6 +525,8 @@ module Stm32Wb55:
     net_chg_pg = new Electrical
     net_chg_stat = new Electrical
     net_gauge_int = new Electrical
+    net_ext_cs = new Electrical
+    net_led = new Electrical
     net_lse_in = new Electrical
     net_lse_out = new Electrical
 
@@ -524,6 +548,8 @@ module Stm32Wb55:
     net_chg_pg ~ charger_power_good.line
     net_chg_stat ~ charger_charging.line
     net_gauge_int ~ gauge_interrupt.line
+    net_ext_cs ~ ext_cs
+    net_led ~ led.line
     net_lse_in ~ ic.PC14_OSC32_IN
     net_lse_out ~ ic.PC15_OSC32_OUT
 
@@ -551,6 +577,8 @@ module Stm32Wb55:
     net_chg_pg.override_net_name = "CHG_PG"
     net_chg_stat.override_net_name = "CHG_STAT"
     net_gauge_int.override_net_name = "GAUGE_INT"
+    net_ext_cs.override_net_name = "EXT_CS"
+    net_led.override_net_name = "LED"
     # LSE_OUT to odcinek PROCESOR -> rezystor 0 R; za rezystorem jest
     # druga siec (do kwarcu) i ma zostac osobna - inaczej narzedzia uznaja
     # obie za jedna i zewra rezystor.
@@ -562,7 +590,5 @@ module Stm32Wb55:
     spare[2].override_net_name = "PA8"
     spare[3].override_net_name = "PA9"
     spare[4].override_net_name = "PA10"
-    spare[5].override_net_name = "PA15"
-    spare[6].override_net_name = "PB5"
-    spare[7].override_net_name = "PB6"
-    spare[8].override_net_name = "PB7"
+    spare[5].override_net_name = "PB6"
+    spare[6].override_net_name = "PB7"

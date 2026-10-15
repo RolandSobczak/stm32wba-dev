@@ -73,6 +73,8 @@ Z tego wynika rozmieszczenie:
 #pragma experiment("BRIDGE_CONNECT")
 
 import Electrical
+import ElectricLogic
+import Resistor
 from "power.ato" import PowerStack
 from "mcu.ato" import Stm32Wb55
 from "storage.ato" import SdNandSpi
@@ -81,6 +83,7 @@ from "headers.ato" import GpioHeader
 from "debug.ato" import SwdPort
 from "parts/Antenna_IFA_2G4/Antenna_IFA_2G4.ato" import Antenna_IFA_2G4_package
 from "parts/TestPoint_Pad_D1R5/TestPoint_Pad_D1R5.ato" import TestPoint_Pad_D1R5_package
+from "parts/Foshan_NationStar_Optoelectronics_NCD1206R1/Foshan_NationStar_Optoelectronics_NCD1206R1.ato" import Foshan_NationStar_Optoelectronics_NCD1206R1_package
 
 
 module ProbePoint:
@@ -94,6 +97,42 @@ module ProbePoint:
     pad = new TestPoint_Pad_D1R5_package
     node = new Electrical
     node ~ pad.p1
+
+
+module UserLed:
+    """Dioda uzytkownika na PB5 - jedyna rzecz na plytce, ktora widac golym okiem.
+
+    Dev board bez diody to plytka, na ktorej nie da sie stwierdzic, czy
+    firmware w ogole wystartowal, bez podpinania sondy. Tu jest po to
+    jedno wyprowadzenie - i akurat to, ktore na nic innego sie nie
+    przydawalo (uzasadnienie w `headers.ato`).
+
+    Nozka **podaje** prad: PB5 -> rezystor -> anoda, katoda na mase.
+    Wysoki stan swieci. Przy stanie wysokiej impedancji - czyli przy
+    resecie i zanim firmware tknie GPIO - diody nie ma czym zasilic, wiec
+    gasnie sama. Konfiguracja odwrotna (z +3V3 przez diode do nozki)
+    swiecilaby tak samo, ale "zapalone = nisko" to pulapka przy czytaniu
+    kodu.
+
+    1 kOhm przy czerwonej diodzie (Vf ok. 1,9 V) daje **1,4 mA**. To malo
+    jak na LED i duzo jak na wskaznik: NCD1206R1 przy 1,4 mA widac w
+    oswietlonym pokoju, a 4,6 mW nie liczy sie przy niczym, co ta plytka
+    robi. Procesor zniosby 20 mA, ale ta plytka chodzi z ogniwa.
+
+    Obudowa 1206, nie 0603 - jedyny taki element na plytce poza
+    bocznikiem. Powod jest ten sam, co przy padach pamieci: ma sie dac
+    polutowac grotem bez mikroskopu.
+    """
+    led = new Foshan_NationStar_Optoelectronics_NCD1206R1_package
+    resistor = new Resistor
+    resistor.resistance = 1kohm +/- 1%
+    resistor.package = "0603"
+
+    drive = new ElectricLogic        # z GPIO procesora
+    gnd = new Electrical
+
+    drive.line ~> resistor ~> led.A
+    led.K ~ gnd
 
 
 module DevBoard:
@@ -148,6 +187,20 @@ module DevBoard:
     hdr_power.sys ~ power.power_sys.hv
     hdr_power.boot0 ~ mcu.boot0
 
+    # Magistrala SPI1 na lewa listwe. To JEST magistrala pamieci - innej
+    # nie ma, bo ani `SPI1_SCK`, ani `SPI1_MISO` nie maja na tym pakiecie
+    # wolnej nozki. Trzy linie wspolne, CS osobny dla kazdego ukladu:
+    # PA4 zostaje przy pamieci, PA15 wychodzi na pozycje 9.
+    hdr_power.spi.sclk ~ mcu.sd_spi.sclk
+    hdr_power.spi.miso ~ mcu.sd_spi.miso
+    hdr_power.spi.mosi ~ mcu.sd_spi.mosi
+    hdr_power.ext_cs ~ mcu.ext_cs
+
+    # I2C na prawa listwe. To ta sama magistrala, na ktorej wisi ladowarka
+    # (0x6B) i gauge (0x55) - pull-upy stoja w `power.ato` i drugiego
+    # zestawu doklada sie na wlasna odpowiedzialnosc.
+    hdr_gpio.i2c ~ power.pmic_i2c
+
     # ─── SWD ───
     # Osobne zlacze ARM Cortex Debug 2x5, a nie cztery pozycje na listwie.
     # Cztery pozycje, ktore wczesniej je niosly, zostaja PUSTE - patrz
@@ -159,15 +212,18 @@ module DevBoard:
     # w `mcu.ato` - obie opisuja ten sam ciag. Wypisane po jednej, bo
     # to jedyna postac, w ktorej widac obie strony naraz: po lewej
     # pozycja na listwie, po prawej nozka procesora.
-    hdr_gpio.spare[0] ~ mcu.spare[0]    # listwa 2  <- PA2
-    hdr_gpio.spare[1] ~ mcu.spare[1]    # listwa 3  <- PA3
-    hdr_gpio.spare[2] ~ mcu.spare[2]    # listwa 4  <- PA8
-    hdr_gpio.spare[3] ~ mcu.spare[3]    # listwa 5  <- PA9
-    hdr_gpio.spare[4] ~ mcu.spare[4]    # listwa 6  <- PA10
-    hdr_gpio.spare[5] ~ mcu.spare[5]    # listwa 7  <- PA15
-    hdr_gpio.spare[6] ~ mcu.spare[6]    # listwa 8  <- PB5
-    hdr_gpio.spare[7] ~ mcu.spare[7]    # listwa 9  <- PB6
-    hdr_gpio.spare[8] ~ mcu.spare[8]    # listwa 10 <- PB7
+    hdr_gpio.spare[0] ~ mcu.spare[0]    # listwa 2  <- PA2   LPUART1_TX
+    hdr_gpio.spare[1] ~ mcu.spare[1]    # listwa 3  <- PA3   LPUART1_RX
+    hdr_gpio.spare[2] ~ mcu.spare[2]    # listwa 4  <- PA8   USART1_CK
+    hdr_gpio.spare[3] ~ mcu.spare[3]    # listwa 5  <- PA9   USART1_TX
+    hdr_gpio.spare[4] ~ mcu.spare[4]    # listwa 6  <- PA10  USART1_RX
+    hdr_gpio.spare[5] ~ mcu.spare[5]    # listwa 9  <- PB6   USART1_TX alt
+    hdr_gpio.spare[6] ~ mcu.spare[6]    # listwa 10 <- PB7   USART1_RX alt
+
+    # ─── Dioda uzytkownika ───
+    user_led = new UserLed
+    user_led.drive ~ mcu.led
+    user_led.gnd ~ power.power_3v3.lv
 
     # ─── Punkty pomiarowe ───
     # Tylko te wezly, ktorych nie ma na listwach. Reszty dotyka sie

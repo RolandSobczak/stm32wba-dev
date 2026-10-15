@@ -72,25 +72,25 @@ i antena — ta ostatnia jest kształtem miedzi, nie elementem.
 
 ## Mapa wyprowadzeń
 
-Układ ma **30 nóżek I/O i wszystkie są rozdane.** Dziewięć wolnych wychodzi
-na prawą listwę.
+Układ ma **30 nóżek I/O i wszystkie są rozdane.** Siedem wolnych wychodzi
+na prawą listwę, PA15 na lewą jako CS, PB5 na diodę.
 
 ```
- 1 VBAT   +3V3           17 PA8   WOLNY          33 VLXSMPS SMPS
- 2 PC14   LSE_IN         18 PA9   WOLNY          34 VDDSMPS +3V3
+ 1 VBAT   +3V3           17 PA8   USART1_CK      33 VLXSMPS SMPS
+ 2 PC14   LSE_IN         18 PA9   USART1_TX      34 VDDSMPS +3V3
  3 PC15   LSE_OUT (0R)   19 PB2   CHG_STAT       35 VDD     +3V3
- 4 PH3    BOOT0          20 VDD   +3V3           36 PA10    WOLNY
+ 4 PH3    BOOT0          20 VDD   +3V3           36 PA10    USART1_RX
  5 PB8    PMIC_SCL       21 RF1   -> MLPF        37 PA11    USB_D_N
  6 PB9    PMIC_SDA       22 VSSRF GND            38 PA12    USB_D_P
  7 NRST   reset          23 VDDRF +3V3           39 PA13    SWDIO
  8 VDDA   +3V3           24 OSC_OUT 32 MHz       40 VDDUSB  +3V3
  9 PA0    CC1 (ADC_IN5)  25 OSC_IN  32 MHz       41 PA14    SWCLK
-10 PA1    CC2 (ADC_IN6)  26 AT0   bez sieci      42 PA15    WOLNY
-11 PA2    WOLNY          27 AT1   bez sieci      43 PB3     SWO
-12 PA3    WOLNY          28 PB0   CHG_INT        44 PB4     GAUGE_INT
-13 PA4    SD_CS          29 PB1   CHG_CE         45 PB5     WOLNY
-14 PA5    SD_CLK         30 PE4   CHG_PG         46 PB6     WOLNY
-15 PA6    SD_MISO        31 VFBSMPS SMPS         47 PB7     WOLNY
+10 PA1    CC2 (ADC_IN6)  26 AT0   bez sieci      42 PA15    EXT_CS
+11 PA2    LPUART1_TX     27 AT1   bez sieci      43 PB3     SWO
+12 PA3    LPUART1_RX     28 PB0   CHG_INT        44 PB4     GAUGE_INT
+13 PA4    SD_CS          29 PB1   CHG_CE         45 PB5     LED
+14 PA5    SD_CLK         30 PE4   CHG_PG         46 PB6     USART1 alt
+15 PA6    SD_MISO        31 VFBSMPS SMPS         47 PB7     USART1 alt
 16 PA7    SD_MOSI        32 VSSSMPS GND          48 VDD     +3V3
                                                  49 EP      GND  (jedyna masa!)
 ```
@@ -140,20 +140,71 @@ przelotkę z wiertłem poniżej progu — razem z pozycją i siecią.
 Listwy (opis i uzasadnienie kolejności w `headers.ato`):
 
 ```
-LEWA (zasilanie + uruchamianie)     PRAWA (wolne nóżki)
- 1 VBUS      7 GND                   1 +3V3    7 PA15
- 2 SYS       8 ——                    2 PA2     8 PB5
- 3 +3V3      9 ——                    3 PA3     9 PB6
- 4 GND      10 GND                   4 PA8    10 PB7
- 5 ——       11 BOOT0                 5 PA9    11 GND
- 6 ——       12 GND                   6 PA10   12 GND
+LEWA (zasilanie + SPI1)             PRAWA (UART-y, I2C, wolne nóżki)
+ 1 VBUS      7 GND                   1 +3V3       7 PMIC_SCL
+ 2 SYS       8 SD_MOSI               2 PA2        8 PMIC_SDA
+ 3 +3V3      9 EXT_CS                3 PA3        9 PB6
+ 4 GND      10 GND                   4 PA8       10 PB7
+ 5 SD_CLK   11 BOOT0                 5 PA9       11 GND
+ 6 SD_MISO  12 GND                   6 PA10      12 GND
 ```
 
-Pozycje 5, 6, 8 i 9 lewej listwy są **celowo bez sieci**. Niosły SWD, zanim
-na płytkę weszło osobne złącze ARM Cortex Debug 2×5 — sygnały przeniosły się
-tam w całości, a footprint listwy został nietknięty.
+### Jakie magistrale z tego wychodzą
+
+Lista peryferiów w `STM32WB55CGUx.xml` kończy się na **I2C1, I2C3, USART1,
+LPUART1, SPI1, QUADSPI**. Nie ma SPI2, nie ma I2C2, nie ma USART2 — na
+większej obudowie STM32WB55 ma SPI2, ale jego nóżki (PB12–PB15, PC2/PC3,
+PD0–PD4) nie wychodzą poza kostkę w UFQFPN-48.
+
+| magistrala | nóżki | gdzie |
+|---|---|---|
+| **LPUART1** | PA2 / PA3 | J1-2, J1-3 |
+| **USART1** | PA9 / PA10, albo PB6 / PB7 | J1-5/6 albo J1-9/10 |
+| **I2C1** | PB8 / PB9 | J1-7, J1-8 |
+| **SPI1** | PA5 / PA6 / PA7 + CS PA15 | J2-5/6/8 + J2-9 |
+
+**QUADSPI jest tu martwy.** `QUADSPI_CLK` istnieje wyłącznie na PA3, a PA3 to
+jedyny możliwy `LPUART1_RX` (drugi, PA12, to USB D+). `BK1_IO0` tylko na PB9,
+`BK1_IO1` tylko na PB8 — czyli na magistrali PMIC-a. Włączenie QSPI
+kosztowałoby drugi UART i sterowanie ładowarką naraz.
+
+**Drugie SPI, gdyby było potrzebne**, ma dwie drogi i wykluczają się: dwa
+układy na jednej magistrali SPI1 (SD NAND na PA4, zewnętrzny na PA15 — i to
+przewiduje ta płytka), albo **USART1 w trybie synchronicznym** — `USART1_CK`
+na PA8 robi z niego mastera SPI (PA8 jako SCK, PA9 jako MOSI, PA10 jako
+MISO), kosztem drugiego UART-u i przy ~8 Mbit/s zamiast 32. Obie
+konfiguracje chodzą na tych samych pozycjach listwy, więc przejście między
+nimi to zmiana w firmware, nie przelutowanie.
+
+**I2C na listwie TO JEST magistrala zasilania.** J1-7 i J1-8 to ta sama para,
+na której wiszą BQ25896 (0x6B) i BQ27441 (0x55). Drugiej nie ma: I2C3 ma na
+tym pakiecie po jednej nóżce na sygnał (`SCL` tylko PA7, `SDA` tylko PB4)
+i obie są zajęte. Trzy konsekwencje opisane w nagłówku `headers.ato`: adresy
+`0x6B` (kolizja z IMU ST) i `0x55` są zajęte, zwarcie na przewodzie zabiera
+sterowanie ładowarką (watchdog I2C 40 s cofa ją do 500 mA), a pull-upy 4,7 kΩ
+są dobrane pod płytkę — 20 cm przewodu spycha magistralę ze 400 na 100 kHz.
+
+**Magistrala SPI1 na lewej listwie to ta sama, na której siedzi SD NAND**,
+i inaczej się nie da: `SPI1_SCK` istnieje tylko na PA1 (CC2), PA5 (SD_CLK)
+i PB3 (SWO), a `SPI1_MISO` tylko na PA6 (SD_MISO), PA11 (USB) i PB4
+(GAUGE_INT) — ani jednej wolnej nóżki.
+
+Pozycje 5–9 lewej listwy były puste — niosły SWD, zanim na płytkę weszło
+osobne złącze ARM Cortex Debug 2×5. Wcześniejsza wersja tego opisu zakazywała
+ich ponownego użycia; **ten argument wiąże dopiero od pierwszej
+wyprodukowanej sztuki**, a takiej nie ma.
 
 Wejście w DFU: zworka z pinu 11 (BOOT0) na pin 3 (+3V3) lewej listwy i reset.
+
+### Dioda użytkownika
+
+PB5 wypadła z listew, bo sygnałów było czternaście na trzynaście pozycji —
+i wypadła nie przypadkiem: wszystkie jej funkcje magistralowe stoją już na
+innych nóżkach (`LPUART1_TX` na PA2, `SPI1_MOSI` na PA7, `USART1_CK` na PA8).
+Dostała czerwoną diodę 1206 (`NCD1206R1`, C84270) przez 1 kΩ (C21190), czyli
+**1,4 mA** — widać ją w oświetlonym pokoju, a 4,6 mW nie liczy się przy
+niczym, co ta płytka robi. Nóżka podaje prąd, więc wysoki stan świeci,
+a przy resecie dioda gaśnie sama.
 
 ## SWD
 

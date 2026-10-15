@@ -1,0 +1,28 @@
+import has_designator_prefix
+import has_part_picked
+import is_atomic_part
+import is_auto_generated
+
+component Foshan_NationStar_Optoelectronics_NCD1206R1_package:
+    """Foshan NationStar NCD1206R1 - czerwona dioda 1206, LCSC C84270.
+
+    Przeniesiona z `gps_tracker-6l` razem z footprintem, symbolem i
+    modelem 3D. Obudowa 1206, a nie 0603 - przy montazu recznym chodzi
+    o to samo, co przy padach pamieci: ma sie dac polutowac grotem.
+
+    Czerwona, bo przy tym samym pradzie swieci najjasniej ze wszystkich
+    kolorow i ma najnizsze Vf (ok. 1,9 V), co przy 3,3 V zostawia
+    najwiecej zapasu na rezystorze.
+    """
+
+    # This trait marks this file as auto-generated
+    # If you want to manually change it, remove the trait
+    trait is_auto_generated<system="ato_part", source="easyeda:C84270", date="2026-08-22T17:28:48.125589+00:00", checksum="f6372c09095dc8390638ad5d0677b788155d81e9df91a1fc5a143c3f2cb9b683">
+
+    trait is_atomic_part<manufacturer="Foshan NationStar Optoelectronics", partnumber="NCD1206R1", footprint="LED1206-R-RD_RED.kicad_mod", symbol="FC-3215HRK-620D.kicad_sym", model="LED1206_INF.step">
+    trait has_part_picked::by_supplier<supplier_id="lcsc", supplier_partno="C84270", manufacturer="Foshan NationStar Optoelectronics", partno="NCD1206R1">
+    trait has_designator_prefix<prefix="LED">
+
+    # pins
+    signal A ~ pin 1
+    signal K ~ pin 2

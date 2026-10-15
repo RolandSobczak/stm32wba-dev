@@ -94,10 +94,10 @@ ZAMIAR = {
     39: ("SWDIO",     "SYS_JTMS-SWDIO"),
     40: ("+3V3",      None),             # VDDUSB
     41: ("SWCLK",     "SYS_JTCK-SWCLK"),
-    42: ("PA15",      None),             # wolna
+    42: ("EXT_CS",    None),             # CS ukladu zewnetrznego na SPI1
     43: ("SWO",       "SYS_JTDO-SWO"),
     44: ("GAUGE_INT", None),
-    45: ("PB5",       None),             # wolna
+    45: ("LED",       None),             # dioda uzytkownika
     46: ("PB6",       None),             # wolna
     47: ("PB7",       None),             # wolna
     48: ("+3V3",      None),             # VDD

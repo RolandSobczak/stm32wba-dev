@@ -294,4 +294,18 @@
 		(options "")
 		(descr "atopile: part lib: Samtec_SHF_105_01_L_D_RA")
 	)
+	(lib
+		(name "Foshan_NationStar_Optoelectronics_NCD1206R1")
+		(type "KiCad")
+		(uri "${KIPRJMOD}/../../parts/Foshan_NationStar_Optoelectronics_NCD1206R1")
+		(options "")
+		(descr "atopile: part lib: Foshan_NationStar_Optoelectronics_NCD1206R1")
+	)
+	(lib
+		(name "UNI_ROYAL_0603WAF1001T5E")
+		(type "KiCad")
+		(uri "${KIPRJMOD}/../../parts/UNI_ROYAL_0603WAF1001T5E")
+		(options "")
+		(descr "atopile: part lib: UNI_ROYAL_0603WAF1001T5E")
+	)
 )
