@@ -16,6 +16,7 @@ resetu, bez zadnego firmware'u poza samym wpisem do rejestru.
 #pragma experiment("BRIDGE_CONNECT")
 #pragma experiment("FOR_LOOP")
 
+import Electrical
 import ElectricPower
 import Capacitor
 from "interfaces.ato" import SpiWithCs
@@ -72,7 +73,20 @@ module SdNandSpi:
     ic.CMD ~ spi.mosi.line
     ic.DAT0 ~ spi.miso.line
     ic.DAT3 ~ spi.cs.line
-    # DAT1 (nozka 7) i DAT2 (nozka 1) celowo bez sieci - patrz docstring.
+    # DAT1 (nozka 7) i DAT2 (nozka 1) sa w trybie SPI nieuzywane - patrz
+    # docstring. Dostaja jednak NAZWY, mimo ze nie prowadza nigdzie.
+    #
+    # Powod jest praktyczny: atopile i tak nadaje kazdemu padowi siec,
+    # a bez nazwy wola ja od wezla w kodzie. Po jednej z przebudow na
+    # plytce wyladowala etykieta `storage.ic-7` - prawdziwa, ale nic nie
+    # mowiaca przy padzie, do ktorego ktos moze kiedys chciec dolutowac
+    # przewod. Nazwa kosztuje zero miedzi i zero elementow.
+    net_dat1 = new Electrical
+    net_dat2 = new Electrical
+    net_dat1 ~ ic.DAT1
+    net_dat2 ~ ic.DAT2
+    net_dat1.override_net_name = "SD_DAT1_NC"
+    net_dat2.override_net_name = "SD_DAT2_NC"
 
     # ─── Odsprzeganie ───
     # Zapis ciagnie do 35 mA (karta katalogowa, ICCO2 przy 50 MHz)

@@ -423,9 +423,22 @@ module Stm32Wb55:
     mlpf.GND3 ~ power.lv
     mlpf.GND4 ~ power.lv
 
-    # AT0 i AT1 (26, 27) zostaja BEZ SIECI. To wyprowadzenia testowe
+    # AT0 i AT1 (26, 27) NIE PROWADZA DONIKAD. To wyprowadzenia testowe
     # producenta; karta katalogowa nie nadaje im zadnej funkcji
     # aplikacyjnej i nie wolno ich nigdzie podlaczac.
+    #
+    # Dostaja za to nazwy sieci. Bez nich atopile nazywa je numerami
+    # nozek ("26", "27"), a takie nazwy potrafia wejsc w kolizje
+    # z numeracja, na ktora wskazuja wylewki - przy innym wyprowadzeniu
+    # skonczylo sie to trzema wylewkami masy pokazujacymi na siec "7".
+    # Nazwa nie doklada ani kawalka miedzi, tylko odbiera numerowi
+    # mozliwosc udawania sieci.
+    net_at0 = new Electrical
+    net_at1 = new Electrical
+    net_at0 ~ ic.AT0
+    net_at1 ~ ic.AT1
+    net_at0.override_net_name = "AT0_NC"
+    net_at1.override_net_name = "AT1_NC"
 
     # ════════════════════════════════════════════════════════════
     #  Debug

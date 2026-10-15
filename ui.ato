@@ -79,23 +79,33 @@ Kasuje sie je odczytem rejestru wejsc.
 
 Co siedzi na ktorym wyprowadzeniu
 ---------------------------------
-    P0  dioda czerwona      P4  przycisk uzytkownika 1
-    P1  dioda zielona       P5  10 k do masy (zapas)
-    P2  dioda czerwona      P6  10 k do masy (zapas)
-    P3  przycisk uzytk. 0   P7  10 k do masy (zapas)
+    P0  dioda czerwona      P4  wolne
+    P1  dioda zielona       P5  wolne
+    P2  przycisk uzytk.     P6  wolne
+    P3  wolne               P7  wolne
 
-**Przyciski potrzebuja podciagniecia zewnetrznego.** TCA6408A nie ma
-wewnetrznych, w odroznieniu od PCF8574. Stad 10 k na kazdym - wcisniecie
-daje zero.
+Dwie diody i jeden przycisk, nie trzy i dwa. Wersja z trzema diodami
+i dwoma przyciskami zajmowala 166,5 mm2 i zwyczajnie nie miescila sie
+w wolnych kieszeniach tej plytki.
 
-**Zapasowe wyprowadzenia maja sciagniecie 10 k, a nie goly drut do masy.**
-Po wlaczeniu wszystkie wyprowadzenia TCA6408A sa wejsciami, wiec zwarcie
-ich do masy byloby poprawne - ale jedna pomylka w firmware (ustawienie
-ich jako wyjscia w stanie wysokim) oznaczalaby zwarcie wyjscia, ktore
-nota kaze ograniczac zewnetrznie do 10 mA. Rezystor zamienia ten blad
-w 330 uA. Niepodlaczone wejscie CMOS odpada z innego powodu: plywa
-i podnosi pobor spoczynkowy, czyli psuje dokladnie te 1,5 uA, dla
-ktorych ten uklad zostal wybrany.
+**Przycisk potrzebuje podciagniecia zewnetrznego.** TCA6408A nie ma
+wewnetrznych, w odroznieniu od PCF8574. Stad 10 k - wcisniecie daje zero.
+
+**Piec wolnych wyprowadzen zostaje BEZ SIECI i bez rezystorow.** Nota
+(uwaga D przy schemacie aplikacyjnym) daje dwie drogi: rezystor na kazde
+wejscie, ktore moze plywac, albo ustawienie tych wyprowadzen jako wyjsc -
+"Outputs (in the P-port) do not need pull-up resistors". Piec rezystorow
+0603 to 21,5 mm2 wydane na nic na plytce, ktorej najwiekszy wolny blok
+ma 110 mm2; jedna linijka w inicjalizacji kosztuje zero.
+
+**To jest kontrakt z firmware'em i trzeba go dotrzymac.** Po wlaczeniu
+zasilania TCA6408A wstaje z wszystkimi wyprowadzeniami jako wejscia, wiec
+te piec plywa az do pierwszego zapisu rejestru konfiguracji. Plywajace
+wejscie CMOS pobiera do okolo 100 uA, czyli piec sztuk do 0,5 mA. Przez
+milisekundy do startu programu to nic - ale plytka odlozona do szuflady
+z podpietym ogniwem i bez dzialajacego firmware'u bedzie to ciagnac
+caly czas. Jesli ten stan ma byc bezpieczny bez programu, rezystory
+sciagajace wracaja.
 """
 
 # Kazdy rezystor i kondensator ma tu JAWNY `lcsc_id`, tak jak w reszcie
@@ -210,7 +220,7 @@ module SystemButtons:
 
 
 module IoExpander:
-    """TCA6408A na magistrali zasilania - trzy diody, dwa przyciski, trzy zapasy."""
+    """TCA6408A na magistrali zasilania - dwie diody, jeden przycisk, piec zapasow."""
     ic = new Texas_Instruments_TCA6408ARGTR_package
 
     power = new ElectricPower
@@ -269,46 +279,63 @@ module IoExpander:
     # ─── Diody ───
     led_red = new RedLed
     led_green = new GreenLed
-    led_red2 = new RedLed
 
     ic.P0 ~ led_red.drive
     ic.P1 ~ led_green.drive
-    ic.P2 ~ led_red2.drive
     led_red.gnd ~ power.lv
     led_green.gnd ~ power.lv
-    led_red2.gnd ~ power.lv
 
-    # ─── Przyciski uzytkownika ───
-    # TCA6408A nie ma podciagniec wewnetrznych, wiec kazdy przycisk ma
-    # wlasne 10 k. Wcisniecie daje zero.
-    btn = new TactSwitch[2]
-    btn_pullups = new Resistor[2]
-    for r in btn_pullups:
-        r.resistance = 10kohm +/- 1%
-        r.package = "0603"
-        r.lcsc_id = "C98220"
+    # ─── Przycisk uzytkownika ───
+    # TCA6408A nie ma podciagniec wewnetrznych, wiec przycisk ma wlasne
+    # 10 k. Wcisniecie daje zero.
+    btn = new TactSwitch
+    btn_pullup = new Resistor
+    btn_pullup.resistance = 10kohm +/- 1%
+    btn_pullup.package = "0603"
+    btn_pullup.lcsc_id = "C98220"
 
-    ic.P3 ~ btn[0].a
-    btn[0].b ~ power.lv
-    btn[0].gnd ~ power.lv
-    power.hv ~> btn_pullups[0] ~> ic.P3
+    ic.P2 ~ btn.a
+    btn.b ~ power.lv
+    btn.gnd ~ power.lv
+    power.hv ~> btn_pullup ~> ic.P2
 
-    ic.P4 ~ btn[1].a
-    btn[1].b ~ power.lv
-    btn[1].gnd ~ power.lv
-    power.hv ~> btn_pullups[1] ~> ic.P4
-
-    # ─── Zapasowe wyprowadzenia ───
-    # Sciagniete, nie zwarte - uzasadnienie w naglowku pliku.
-    spare_pulldowns = new Resistor[3]
-    for r in spare_pulldowns:
-        r.resistance = 10kohm +/- 1%
-        r.package = "0603"
-        r.lcsc_id = "C98220"
-
-    ic.P5 ~> spare_pulldowns[0] ~> power.lv
-    ic.P6 ~> spare_pulldowns[1] ~> power.lv
-    ic.P7 ~> spare_pulldowns[2] ~> power.lv
+    # ─── P3-P7: wolne, BEZ SIECI ───
+    # Nie ma tu rezystorow i to jest decyzja, nie przeoczenie. Nota
+    # (uwaga D przy schemacie aplikacyjnym) stawia sprawe wprost:
+    # "Resistors are required for inputs (on P-port) that may float. If
+    # a driver to an input will never let the input float, a resistor is
+    # not needed. Outputs (in the P-port) do not need pull-up resistors."
+    #
+    # Czyli albo piec rezystorow, albo firmware ustawiajacy te piec
+    # wyprowadzen jako WYJSCIA przy starcie. Piec sztuk 0603 to 21,5 mm2
+    # na plytce, na ktorej najwiekszy wolny blok ma 110 mm2 - za duzo za
+    # nic. Jedna linijka w inicjalizacji kosztuje zero.
+    #
+    # Cena tego wyboru: miedzy wlaczeniem zasilania a ta linijka
+    # wyprowadzenia sa wejsciami i plywaja, bo tak wstaje TCA6408A.
+    # Plywajace wejscie CMOS pobiera do okolo 100 uA, wiec piec sztuk to
+    # do 0,5 mA. Przez milisekundy do startu firmware'u to nic; na
+    # plytce, ktora zostanie w szufladzie z podpietym ogniwem i bez
+    # dzialajacego programu, to jest realny uplyw. **Jesli ten stan ma
+    # byc bezpieczny bez firmware'u, wracaja rezystory sciagajace.**
+    #
+    # Nazwy dostaja mimo to - i to NIE jest kosmetyka. Bez nich atopile
+    # nazwal te sieci numerami nozek ("5", "7"), a numery weszly w kolizje
+    # z numeracja sieci, na ktora wskazuja wylewki: po jednej przebudowie
+    # trzy wylewki masy pokazywaly na siec "7", czyli na P7 tego ukladu.
+    # `tools/board_setup.py` ma teraz na to straznika, ale zrodlo problemu
+    # jest tutaj i tutaj sie je usuwa.
+    exp_spare = new Electrical[5]
+    ic.P3 ~ exp_spare[0]
+    ic.P4 ~ exp_spare[1]
+    ic.P5 ~ exp_spare[2]
+    ic.P6 ~ exp_spare[3]
+    ic.P7 ~ exp_spare[4]
+    exp_spare[0].override_net_name = "EXP_P3_NC"
+    exp_spare[1].override_net_name = "EXP_P4_NC"
+    exp_spare[2].override_net_name = "EXP_P5_NC"
+    exp_spare[3].override_net_name = "EXP_P6_NC"
+    exp_spare[4].override_net_name = "EXP_P7_NC"
 
     # ─── Nazwy sieci ───
     # Ten sam powod, co w `mcu.ato`: bez tego na plytce leza etykiety
@@ -317,9 +344,6 @@ module IoExpander:
     # to jedyne, co widac przy padzie.
     led_red.drive.override_net_name = "EXP_LED0"
     led_green.drive.override_net_name = "EXP_LED1"
-    led_red2.drive.override_net_name = "EXP_LED2"
     led_red.anode.override_net_name = "LED0_A"
     led_green.anode.override_net_name = "LED1_A"
-    led_red2.anode.override_net_name = "LED2_A"
-    btn[0].a.override_net_name = "BTN_USR0"
-    btn[1].a.override_net_name = "BTN_USR1"
+    btn.a.override_net_name = "BTN_USR"

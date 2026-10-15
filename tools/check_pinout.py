@@ -78,8 +78,8 @@ ZAMIAR = {
     23: ("+3V3",      None),             # VDDRF
     24: ("OSC_OUT",   "RCC_OSC_OUT"),
     25: ("OSC_IN",    "RCC_OSC_IN"),
-    26: (None,        None),             # AT0 - celowo bez sieci
-    27: (None,        None),             # AT1 - celowo bez sieci
+    26: ("AT0_NC",    None),             # test produkcyjny ST - nigdzie nie prowadzi
+    27: ("AT1_NC",    None),             # test produkcyjny ST - nigdzie nie prowadzi
     28: ("CHG_INT",   None),
     29: ("CHG_CE",    None),
     30: ("CHG_PG",    None),
@@ -207,7 +207,14 @@ def main() -> int:
             bledy.append(f"siec {siec!r} siedzi na nozkach {nozki} - "
                          f"zwarcie albo literowka w ZAMIARZE")
 
-    uzyte = len([1 for s, _ in ZAMIAR.values() if s])
+    # `_NC` to nozki, ktore maja NAZWE sieci, ale ta siec nigdzie nie
+    # prowadzi - jeden pad i tyle. Nazwa istnieje po to, zeby atopile nie
+    # ochrzcilo ich numerem nozki; numer potrafi wejsc w kolizje
+    # z numeracja, na ktora wskazuja wylewki. Liczac "obsadzone" trzeba je
+    # odjac, inaczej podsumowanie twierdzi, ze obsadzonych jest wiecej niz
+    # nozek.
+    nc = [s for s, _ in ZAMIAR.values() if s and s.endswith("_NC")]
+    uzyte = len([1 for s, _ in ZAMIAR.values() if s]) - len(nc)
     sprawdzone = len([1 for _, f in ZAMIAR.values() if f])
     if bledy:
         print(f"BLEDY ({len(bledy)}):")
@@ -215,8 +222,8 @@ def main() -> int:
             print("  -", b)
         return 1
     print(f"mapa wyprowadzen OK: 48 nozek + pad, {uzyte} obsadzonych, "
-          f"2 celowo wolne (AT0, AT1), {sprawdzone} funkcji sprawdzonych "
-          f"wobec STM32WB55CGUx.xml")
+          f"{len(nc)} nigdzie nie prowadzi ({', '.join(sorted(nc))}), "
+          f"{sprawdzone} funkcji sprawdzonych wobec STM32WB55CGUx.xml")
     return 0
 
 

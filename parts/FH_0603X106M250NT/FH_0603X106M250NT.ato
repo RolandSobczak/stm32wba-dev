@@ -6,7 +6,7 @@ import is_auto_generated
 component FH_0603X106M250NT_package:
     # This trait marks this file as auto-generated
     # If you want to manually change it, remove the trait
-    trait is_auto_generated<system="ato_part", source="easyeda:C479655", date="2026-10-15T14:43:02.916174+00:00", checksum="fc8aeef3abc51c6bca428a56c532a3a6c537712314e6f94ee62aaa2656c472b8">
+    trait is_auto_generated<system="ato_part", source="easyeda:C479655", date="2026-10-15T15:35:22.595418+00:00", checksum="6785c744fcc50428de4dee58d633022e1866a714fde7320d80a4577f4d03438b">
 
     trait is_atomic_part<manufacturer="FH", partnumber="0603X106M250NT", footprint="C0603.kicad_mod", symbol="0603X106M250NT.kicad_sym", model="C0603_L1.6-W0.8-H0.8.step">
     trait has_part_picked::by_supplier<supplier_id="lcsc", supplier_partno="C479655", manufacturer="FH", partno="0603X106M250NT">

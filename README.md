@@ -230,11 +230,15 @@ VQFN-16 **3,0 × 3,0 mm** (LCSC C181499), na magistrali zasilania pod
 i gauge'a `0x55`.
 
 ```
-P0  dioda czerwona      P4  przycisk użytkownika 1
-P1  dioda zielona       P5  10 k do masy (zapas)
-P2  dioda czerwona      P6  10 k do masy (zapas)
-P3  przycisk użytk. 0   P7  10 k do masy (zapas)
+P0  dioda czerwona      P4  wolne
+P1  dioda zielona       P5  wolne
+P2  przycisk użytk.     P6  wolne
+P3  wolne               P7  wolne
 ```
+
+Dwie diody i jeden przycisk, nie trzy i dwa — wersja z trzema diodami
+i dwoma przyciskami zajmowała 166,5 mm² i nie mieściła się w wolnych
+kieszeniach płytki.
 
 Wybrany po czterech liczbach z noty: **wyjścia przeciwsobne** (PCF8574
 podciąga tylko ~100 µA i wymusza logikę „zapalone = nisko"), **1,65–5,5 V**,
@@ -261,10 +265,23 @@ nie potrzebuje żadnej funkcji alternatywnej, a PB5 żadnej użytecznej nie ma
 — stąd para. EXTI budzi ze Stop; ze Standby nie, bo do tego trzeba nóżek
 WKUP, a te są dwie i obie zajęte.
 
-Przyciski mają **podciągnięcia zewnętrzne 10 k**, bo TCA6408A nie ma
-wewnętrznych (prąd wejścia ±1 µA). Zapasowe wyprowadzenia mają ściągnięcia,
-a nie drut do masy: pomyłka w firmware zamienia się wtedy w 330 µA zamiast
-w zwarcie wyjścia, które nota każe ograniczać do 10 mA.
+Przycisk ma **podciągnięcie zewnętrzne 10 k**, bo TCA6408A nie ma
+wewnętrznych.
+
+**Pięć wolnych wyprowadzeń nie ma rezystorów i to jest kontrakt
+z firmware'em.** Nota daje dwie drogi — rezystor na każde wejście, które
+może pływać, albo ustawienie tych wyprowadzeń jako wyjść (*„Outputs do not
+need pull-up resistors"*). Pięć sztuk 0603 to 21,5 mm² wydane na nic;
+jedna linijka w inicjalizacji kosztuje zero. Cena: do pierwszego zapisu
+rejestru konfiguracji nóżki pływają, a pływające wejście CMOS ciągnie do
+~100 µA — płytka w szufladzie z ogniwem i bez działającego programu będzie
+to brać cały czas.
+
+**Wszystkie nóżki donikąd mają nazwy sieci** (`EXP_P3_NC`…`EXP_P7_NC`,
+`SD_DAT1_NC`, `SD_DAT2_NC`, `AT0_NC`, `AT1_NC`). Bez nich atopile nazywa
+je numerem nóżki, a numer potrafi wejść w kolizję z numeracją, na którą
+wskazują wylewki — raz skończyło się to trzema wylewkami masy pokazującymi
+na sieć `7`, czyli na wolne wyprowadzenie ekspandera.
 
 Diody: czerwone `NCD1206R1` (C84270) i zielona `NCD1206C1` (C84273), 1206,
 przez 1 kΩ (C21190) — **1,4 mA**. Uwaga przy podłączaniu: **te dwie diody

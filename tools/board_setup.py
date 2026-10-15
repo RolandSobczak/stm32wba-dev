@@ -993,15 +993,28 @@ def set_zones(board: pcbnew.BOARD, w: float, h: float) -> None:
     zastane = {}
     maja_plaszczyzne = set()
 
+    def zgubiona(nazwa: str) -> bool:
+        """Czy ta nazwa sieci jest smieciem po przenumerowaniu.
+
+        Pusta - strefa wskazuje numer, ktorego juz nie ma. Zlozona z
+        samych cyfr - wskazuje numer, ktory tymczasem przejela inna siec,
+        nazwana przez atopile od numeru nozki. To drugie jest grozniejsze,
+        bo wyglada na poprawne: raz juz trzy wylewki masy pokazywaly na
+        siec "7", czyli na wolne wyprowadzenie ekspandera.
+
+        Zadna prawdziwa siec w tym projekcie nie nazywa sie samymi
+        cyframi - wszystkie maja nazwy z `override_net_name`.
+        """
+        return not nazwa or nazwa.isdigit()
+
     def przywroc_siec(z, warstwa):
         """Oddaje strefie siec, ktora zgubil `ato build`.
 
         `ato build` przepisuje plik plytki i przy okazji przenumerowuje
         sieci. Strefy trzymaja siec NUMEREM, nie nazwa, wiec po
-        przebudowie potrafia wskazywac numer, ktorego juz nie ma - i
-        wylewka masy staje sie bezsieciowa wyspa. Na warstwie wewnetrznej
-        widac to od razu (ponizszy `raise`), ale na F.Cu i B.Cu przechodzi
-        po cichu az do DRC.
+        przebudowie potrafia wskazywac na cudza siec albo na zadna - i
+        wylewka masy staje sie wyspa albo, gorzej, plaszczyzna czyjegos
+        sygnalu.
 
         Ktora siec przywrocic, wynika jednoznacznie z warstwy: zewnetrzne
         opisuje WYLEWKI_ZEWNETRZNE, wewnetrzne PLASZCZYZNY.
@@ -1043,7 +1056,10 @@ def set_zones(board: pcbnew.BOARD, w: float, h: float) -> None:
             continue
         warstwy = list(z.GetLayerSet().Seq())
         if len(warstwy) == 1 and warstwy[0] in zewnetrzne:
-            if not z.GetNetname():
+            # Na F.Cu stoja tez wylewki SYS i VBUS, wiec NIE wolno tu
+            # niczego wymuszac - tylko naprawiac to, co wyraznie zgubilo
+            # tozsamosc. Zdrowa wylewka SYS zostaje wylewka SYS.
+            if zgubiona(z.GetNetname()):
                 przywroc_siec(z, warstwy[0])
             zastane[warstwy[0]] = z
             # Zarysow co do zasady nie ruszamy - autorouter potrafi oddac
@@ -1060,7 +1076,10 @@ def set_zones(board: pcbnew.BOARD, w: float, h: float) -> None:
                     f"{pcbnew.ToMM(zb.GetHeight()):.1f} mm, WYPROSTOWANY")
             continue
         siec = z.GetNetname()
-        if not siec and len(warstwy) == 1:
+        # Warstwa wewnetrzna niesie DOKLADNIE jedna plaszczyzne, wiec
+        # mapa jest tu jednoznaczna i to ona jest zrodlem prawdy - nie
+        # plik. Nazwe z pliku bierzemy tylko wtedy, gdy jest zdrowa.
+        if zgubiona(siec) and len(warstwy) == 1:
             siec = przywroc_siec(z, warstwy[0]) or siec
         if siec not in plany:
             raise SystemExit(
