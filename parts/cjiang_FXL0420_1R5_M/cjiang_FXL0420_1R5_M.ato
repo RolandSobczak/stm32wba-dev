@@ -6,7 +6,7 @@ import is_auto_generated
 component cjiang_FXL0420_1R5_M_package:
     # This trait marks this file as auto-generated
     # If you want to manually change it, remove the trait
-    trait is_auto_generated<system="ato_part", source="easyeda:C167205", date="2026-10-15T14:23:38.384063+00:00", checksum="f0991a7353d4f82d15f7dd79729354e0d387c118c3d15ed47ec5261f45369c63">
+    trait is_auto_generated<system="ato_part", source="easyeda:C167205", date="2026-10-15T14:43:03.332711+00:00", checksum="eb9a8bf474b2b77f93f2b1daae3bca63a8e9b2e32a28722b5406d4ea27b99236">
 
     trait is_atomic_part<manufacturer="cjiang", partnumber="FXL0420-1R5-M", footprint="IND-SMD_L4.4-W4.2.kicad_mod", symbol="FXL0420-1R5-M.kicad_sym", model="IND-SMD_L4.2-W4.4-H2.0.step">
     trait has_part_picked::by_supplier<supplier_id="lcsc", supplier_partno="C167205", manufacturer="cjiang", partno="FXL0420-1R5-M">

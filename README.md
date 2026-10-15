@@ -223,10 +223,11 @@ Rezystora 100 Ω szeregowo przy RESET **nie ma świadomie**: przycisk zwiera
 naładowane 100 nF przez styki, co je powoli eroduje, ale AN2586 i wszystkie
 płytki Nucleo oraz Discovery łączą go wprost.
 
-### Ekspander I/O — TCA9534PWR
+### Ekspander I/O — TCA6408A
 
-TSSOP-16 (LCSC C783615), na magistrali zasilania pod **adresem 0x20**
-(A2/A1/A0 na masie), czyli daleko od ładowarki `0x6B` i gauge'a `0x55`.
+VQFN-16 **3,0 × 3,0 mm** (LCSC C181499), na magistrali zasilania pod
+**adresem 0x20** (ADDR na masie), czyli daleko od ładowarki `0x6B`
+i gauge'a `0x55`.
 
 ```
 P0  dioda czerwona      P4  przycisk użytkownika 1
@@ -235,17 +236,32 @@ P2  dioda czerwona      P6  10 k do masy (zapas)
 P3  przycisk użytk. 0   P7  10 k do masy (zapas)
 ```
 
-Wybrany po trzech liczbach z noty: **wyjścia przeciwsobne** (PCF8574
+Wybrany po czterech liczbach z noty: **wyjścia przeciwsobne** (PCF8574
 podciąga tylko ~100 µA i wymusza logikę „zapalone = nisko"), **1,65–5,5 V**,
-i **0,9 µA w spoczynku** — ta ostatnia przesądziła o rezygnacji z diody
-adresowalnej, bo sterownik WS2812 pobiera rzędu 1 mA nawet zgaszony.
+**1,5 µA w spoczynku** — ta ostatnia przesądziła o rezygnacji z diody
+adresowalnej, bo sterownik WS2812 pobiera rzędu 1 mA nawet zgaszony —
+i **obrys 3,4 × 3,4 mm**.
+
+Pierwotnie stał tu TCA9534PWR w TSSOP-16: funkcjonalnie to samo, ale
+**32 mm² zamiast 11**, czyli trzykrotnie więcej. Na płytce, której
+największy wolny blok ma 13 × 8,5 mm, to była różnica między „wchodzi"
+a „nie wchodzi".
+
+Obudowa QFN kosztuje trzy rzeczy, których TSSOP nie wymagał — dwie szyny
+zasilania (`VCCI` i `VCCP`, obie na +3V3), nóżkę `RESET` (zwarta wprost do
+szyny) i pad pod obudową (na masę, zszywany przelotkami jak pozostałe).
+Żadna z nich nie kosztuje dodatkowego elementu. Raster zostaje 0,5 mm,
+czyli taki sam jak w procesorze.
+
+Nóżka adresowa jest jedna zamiast trzech, więc adresy są dwa — `0x20`
+i `0x21`. Przy jednym ekspanderze to niczego nie ogranicza.
 
 `nINT` jest otwartym drenem i ma własne 10 k; idzie na **PB5**. Przerwanie
 nie potrzebuje żadnej funkcji alternatywnej, a PB5 żadnej użytecznej nie ma
 — stąd para. EXTI budzi ze Stop; ze Standby nie, bo do tego trzeba nóżek
 WKUP, a te są dwie i obie zajęte.
 
-Przyciski mają **podciągnięcia zewnętrzne 10 k**, bo TCA9534 nie ma
+Przyciski mają **podciągnięcia zewnętrzne 10 k**, bo TCA6408A nie ma
 wewnętrznych (prąd wejścia ±1 µA). Zapasowe wyprowadzenia mają ściągnięcia,
 a nie drut do masy: pomyłka w firmware zamienia się wtedy w 330 µA zamiast
 w zwarcie wyjścia, które nota każe ograniczać do 10 mA.

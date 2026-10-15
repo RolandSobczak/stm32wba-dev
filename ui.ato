@@ -5,7 +5,7 @@ Dwie warstwy, bo dwie klasy problemow:
   * **`SystemButtons`** - RESET i BOOT0, podlaczone wprost do linii, ktore
     i tak juz na plytce sa. **Nie kosztuja ani jednej nozki procesora**,
     bo NRST i BOOT0 to nie sa GPIO.
-  * **`IoExpander`** - TCA9534 na I2C, a na nim diody i przyciski
+  * **`IoExpander`** - TCA6408A na I2C, a na nim diody i przyciski
     uzytkownika. Kosztuje jedna nozke (przerwanie) i jeden uklad, za to
     daje osiem wyprowadzen, ktorych procesor juz nie ma.
 
@@ -38,24 +38,38 @@ styki. KMR221GLFS jest na 50 mA i 100 000 cykli.
 
 Ekspander
 ---------
-**TCA9534PWR** (TSSOP-16, LCSC C783615) - wybrany po trzech cechach:
+**TCA6408ARGTR** (VQFN-16, 3,0 x 3,0 mm, LCSC C181499) - wybrany po
+czterech cechach:
 
   * **wyjscia przeciwsobne**, nie quasi-dwukierunkowe jak w PCF8574.
     Dioda moze wiec wisiec do masy i swiecic przy stanie wysokim, czyli
     tak, jak czyta sie to w kodzie. PCF8574 podciaga tylko ~100 uA
     i wymusza odwrotna logike ("zapalone = nisko");
   * **1,65-5,5 V**, czyli 3,3 V z duzym zapasem;
-  * **0,9 uA w spoczynku** (typ. przy 3,6 V, max 2,2 uA). To jest ta
-    liczba, ktora przesadzila o rezygnacji z diody adresowalnej:
-    sterownik WS2812 pobiera rzedu 1 mA nawet zgaszony, czyli **tysiac
-    razy wiecej** niz caly ten ekspander.
+  * **1,5 uA w spoczynku**. To jest ta liczba, ktora przesadzila
+    o rezygnacji z diody adresowalnej: sterownik WS2812 pobiera rzedu
+    1 mA nawet zgaszony, czyli **siedemset razy wiecej** niz caly ten
+    ekspander;
+  * **obrys 3,4 x 3,4 mm zamiast 5,0 x 6,4 mm**. Pierwotnie stal tu
+    TCA9534PWR w TSSOP-16 - funkcjonalnie to samo, ale zajmowal 32 mm2
+    zamiast 11, czyli trzykrotnie wiecej. Na plytce 32,5 x 59,6 mm,
+    ktorej najwiekszy wolny blok ma 13 x 8,5 mm, to byla roznica miedzy
+    "wchodzi" a "nie wchodzi".
 
-Obciazalnosc wyjsc z noty: **10 mA zrodlowo** (VOH 2,5 V przy 3 V i pelnym
-pradzie), **25 mA do masy**, sumarycznie 80 mA przez VCC i 200 mA przez
-mase. Diody chodza tu na 1,4 mA, wiec nie zblizamy sie do zadnego progu.
+Obciazalnosc wyjsc z noty: **10 mA zrodlowo**, **25 mA do masy**. Diody
+chodza tu na 1,4 mA, wiec nie zblizamy sie do zadnego progu.
 
-**Adres 0x20** (A2/A1/A0 na masie; rodzina zajmuje 0x20-0x27). Zadnej
-kolizji z ladowarka 0x6B ani gauge'em 0x55.
+**Adres 0x20** (ADDR na masie). Zadnej kolizji z ladowarka 0x6B ani
+gauge'em 0x55. Nozka adresowa jest jedna, nie trzy jak w TCA9534, wiec
+adresy sa dwa - 0x20 i 0x21. Przy jednym ekspanderze to niczego nie
+ogranicza, ale drugiego takiego ukladu dolozy sie tylko jeden.
+
+**Obudowa QFN kosztuje trzy rzeczy, ktorych TSSOP nie wymagal**: dwie
+szyny zasilania (`VCCI` i `VCCP`), nozke `RESET` do obsluzenia i pad pod
+obudowa do przylutowania. Wszystkie trzy sa zalatwione nizej w kodzie
+i zadna nie kosztuje dodatkowego elementu. Raster zostaje 0,5 mm, czyli
+dokladnie taki jak w procesorze - to ten sam ruch przy lutowaniu, tylko
+szesnascie nozek zamiast czterdziestu osmiu.
 
 **`nINT` jest otwartym drenem** i ma wlasne podciagniecie 10 k - bez niego
 linia nigdy nie wroci do jedynki. Idzie na **PB5**, nozke zwolniona przy
@@ -70,17 +84,17 @@ Co siedzi na ktorym wyprowadzeniu
     P2  dioda czerwona      P6  10 k do masy (zapas)
     P3  przycisk uzytk. 0   P7  10 k do masy (zapas)
 
-**Przyciski potrzebuja podciagniecia zewnetrznego.** TCA9534 nie ma
-wewnetrznych (prad wejscia to +/-1 uA), w odroznieniu od PCF8574. Stad
-10 k na kazdym - wcisniecie daje zero.
+**Przyciski potrzebuja podciagniecia zewnetrznego.** TCA6408A nie ma
+wewnetrznych, w odroznieniu od PCF8574. Stad 10 k na kazdym - wcisniecie
+daje zero.
 
 **Zapasowe wyprowadzenia maja sciagniecie 10 k, a nie goly drut do masy.**
-Po wlaczeniu wszystkie wyprowadzenia TCA9534 sa wejsciami, wiec zwarcie
+Po wlaczeniu wszystkie wyprowadzenia TCA6408A sa wejsciami, wiec zwarcie
 ich do masy byloby poprawne - ale jedna pomylka w firmware (ustawienie
 ich jako wyjscia w stanie wysokim) oznaczalaby zwarcie wyjscia, ktore
 nota kaze ograniczac zewnetrznie do 10 mA. Rezystor zamienia ten blad
 w 330 uA. Niepodlaczone wejscie CMOS odpada z innego powodu: plywa
-i podnosi pobor spoczynkowy, czyli psuje dokladnie te 0,9 uA, dla
+i podnosi pobor spoczynkowy, czyli psuje dokladnie te 1,5 uA, dla
 ktorych ten uklad zostal wybrany.
 """
 
@@ -100,7 +114,7 @@ import Resistor
 import Capacitor
 import I2C
 from "parts/C_K_KMR221GLFS/C_K_KMR221GLFS.ato" import C_K_KMR221GLFS_package
-from "parts/Texas_Instruments_TCA9534PWR/Texas_Instruments_TCA9534PWR.ato" import Texas_Instruments_TCA9534PWR_package
+from "parts/Texas_Instruments_TCA6408ARGTR/Texas_Instruments_TCA6408ARGTR.ato" import Texas_Instruments_TCA6408ARGTR_package
 from "parts/Foshan_NationStar_Optoelectronics_NCD1206R1/Foshan_NationStar_Optoelectronics_NCD1206R1.ato" import Foshan_NationStar_Optoelectronics_NCD1206R1_package
 from "parts/Foshan_NationStar_Optoelectronics_NCD1206C1/Foshan_NationStar_Optoelectronics_NCD1206C1.ato" import Foshan_NationStar_Optoelectronics_NCD1206C1_package
 
@@ -135,7 +149,7 @@ module IndicatorLed:
     chodzi z ogniwa.
 
     Sterowanie jest po stronie anody: stan wysoki swieci. Po wlaczeniu
-    zasilania wyprowadzenia TCA9534 sa wejsciami, wiec dioda jest ciemna,
+    zasilania wyprowadzenia ekspandera sa wejsciami, wiec dioda jest ciemna,
     zanim firmware ja zapali.
     """
     resistor = new Resistor
@@ -196,28 +210,52 @@ module SystemButtons:
 
 
 module IoExpander:
-    """TCA9534 na magistrali zasilania - trzy diody, dwa przyciski, trzy zapasy."""
-    ic = new Texas_Instruments_TCA9534PWR_package
+    """TCA6408A na magistrali zasilania - trzy diody, dwa przyciski, trzy zapasy."""
+    ic = new Texas_Instruments_TCA6408ARGTR_package
 
     power = new ElectricPower
     i2c = new I2C
     interrupt = new ElectricLogic     # nINT -> PB5
 
-    ic.VCC ~ power.hv
+    # DWIE szyny zasilania, nie jedna. `VCCI` zasila strone I2C, `VCCP`
+    # strone wyprowadzen - uklad potrafi miedzy nimi translowac poziomy.
+    # Tu obie ida na +3V3, bo nie ma czego translowac, ale to dwie nozki
+    # i o jedna rzecz wiecej do pomylenia przy rozmieszczaniu.
+    ic.VCCI ~ power.hv
+    ic.VCCP ~ power.hv
     ic.GND ~ power.lv
+
+    # Pad pod obudowa. Nota: "must be soldered to the printed circuit
+    # board for thermal and mechanical performance". Idzie na mase razem
+    # z GND, a `tools/board_setup.py` zszyje go przelotkami jak kazdy
+    # inny pad termiczny.
+    ic.PAD ~ power.lv
+
     ic.SCL ~ i2c.scl.line
     ic.SDA ~ i2c.sda.line
     ic.nINT ~ interrupt.line
 
-    # Adres 0x20 - wszystkie trzy nozki adresowe na masie.
-    ic.A0 ~ power.lv
-    ic.A1 ~ power.lv
-    ic.A2 ~ power.lv
+    # Adres 0x20 - nozka adresowa na masie. Tu jest ich mniej niz
+    # w TCA9534, ktory tu stal wczesniej: jedna zamiast trzech, wiec
+    # adresy sa dwa (0x20 i 0x21),
+    # a nie osiem. Przy jednym ekspanderze bez znaczenia.
+    ic.ADDR ~ power.lv
+
+    # RESET wprost do zasilania, bez rezystora. Nota mowi "connect to
+    # VCCI through a pull-up resistor, if no active connection is used" -
+    # rezystor ma sens tylko wtedy, gdy ktos moze te linie kiedys
+    # pociagnac. Tu nie ma czym i nie ma po co: ekspander resetuje sie
+    # wlasnym POR-em, a rejestry zeruje sie po I2C. Zwarcie do szyny
+    # oszczedza element w miejscu, w ktorym go nie ma gdzie postawic.
+    ic.nRESET ~ power.hv
 
     decoupling = new Capacitor
     decoupling.capacitance = 100nF +/- 10%
     decoupling.package = "0603"
     decoupling.lcsc_id = "C14663"  # YAGEO CC0603KRX7R9BB104, 100nF X7R 50V
+    # Jeden kondensator na obie szyny - `VCCI` i `VCCP` to nozki 15 i 14,
+    # czyli sasiednie, a sam uklad bierze 1,5 uA. Dwa osobne odsprzegania
+    # mialyby sens, gdyby szyny byly rozne; tu sa ta sama miedzia.
     power.hv ~> decoupling ~> power.lv
 
     # nINT jest otwartym drenem - bez tego rezystora linia nie wroci do
@@ -241,7 +279,7 @@ module IoExpander:
     led_red2.gnd ~ power.lv
 
     # ─── Przyciski uzytkownika ───
-    # TCA9534 nie ma podciagniec wewnetrznych, wiec kazdy przycisk ma
+    # TCA6408A nie ma podciagniec wewnetrznych, wiec kazdy przycisk ma
     # wlasne 10 k. Wcisniecie daje zero.
     btn = new TactSwitch[2]
     btn_pullups = new Resistor[2]

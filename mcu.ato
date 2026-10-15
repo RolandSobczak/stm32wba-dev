@@ -156,7 +156,7 @@ module Stm32Wb55:
     # `SPI1_MOSI` na PA7, `USART1_CK` na PA8. Jako jedyna wolna nozka nie
     # wnosila niczego, czego nie ma na innej.
     #
-    # Dlatego trafilo tu wejscie przerwania z TCA9534 (`ui.ato`): nie
+    # Dlatego trafilo tu wejscie przerwania z TCA6408A (`ui.ato`): nie
     # potrzebuje zadnej funkcji alternatywnej, a PB5 zadnej uzytecznej nie
     # ma. EXTI budzi ze Stop; ze Standby nie, bo do tego trzeba nozek
     # WKUP, a te sa dwie i obie zajete (PA0 to CC1, PA2 to LPUART1_TX).

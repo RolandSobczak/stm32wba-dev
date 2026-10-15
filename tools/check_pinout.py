@@ -97,7 +97,7 @@ ZAMIAR = {
     42: ("EXT_CS",    None),             # CS ukladu zewnetrznego na SPI1
     43: ("SWO",       "SYS_JTDO-SWO"),
     44: ("GAUGE_INT", None),
-    45: ("EXP_INT",   None),             # przerwanie z ekspandera TCA9534
+    45: ("EXP_INT",   None),             # przerwanie z ekspandera TCA6408A
     46: ("PB6",       None),             # wolna
     47: ("PB7",       None),             # wolna
     48: ("+3V3",      None),             # VDD
