@@ -4,7 +4,7 @@ import is_atomic_part
 import is_auto_generated
 
 component MK_MKDV2GCL_ABF_package:
-    """MK MKDV2GCL-ABF - 2 Gbit SD NAND, LGA-8 8,0 x 6,0 x 0,9 mm.
+    """MK MKDV2GCL-ABF - 2 Gbit SD NAND, LGA-8 8,0 x 6,0 x 0,7 mm.
 
     Pamiec masowa wlutowana na stale, zamiast gniazda karty. Na plytce
     o tym rozmiarze korytarz na wysuwana karte kosztowalby wiecej
@@ -22,15 +22,22 @@ component MK_MKDV2GCL_ABF_package:
     od wersji 1 Gbit, `MKDV1GCL-ABB`, z padami konczacymi sie POD obudowa).
     Stoi tu `LGA-8_MKDV_handsolder` przeniesiony z `gps_tracker-6l`: pady
     1,7 x 0,8 mm w osi +/-3,700, wychodzace 0,55 mm POZA obudowe. Ta sama
-    obudowa dla 1 / 2 / 4 Gbit (D = 8,0, E = 6,0, D1 = 6,850, E1 = 3,810,
-    raster 1,27), tylko dluzszy nosek - jest co obejrzec i jest gdzie
-    dotknac grotem. Przy montazu recznym to warunek, nie wygoda.
+    obudowa dla 1 / 2 / 4 Gbit (nota: E = 8,00, D = 6,00, D1 = 3,81,
+    raster 1,27, pad L = 0,85 x b = 0,55), tylko dluzszy nosek - jest co
+    obejrzec i jest gdzie dotknac grotem. Przy montazu recznym to warunek,
+    nie wygoda.
+
+    Model 3D tez nie jest tym z EasyEDA. Tamten (`...MKDV4GCL-ABF.STEP`,
+    zostaje w katalogu nieuzywany) siega 0,21 mm PONIZEJ plaszczyzny
+    oparcia i ma 0,81 mm wysokosci przy A = 0,70 w nocie. Uzywany jest
+    `LGA-8_L8.0-W6.0-P1.27_MKDV2GCL-ABF.step`, zbudowany z tabeli wymiarow
+    przez `tools/sdnand_step.py`.
     """
     # This trait marks this file as auto-generated
     # If you want to manually change it, remove the trait
     trait is_auto_generated<system="ato_part", source="easyeda:C51966231", date="2026-10-01T22:07:10.489884+00:00", checksum="9a0f1576f47f29ac6c274c618d6202328fe2190795ce342a0176a3c601cf8359">
 
-    trait is_atomic_part<manufacturer="MK", partnumber="MKDV2GCL-ABF", footprint="LGA-8_MKDV_handsolder.kicad_mod", symbol="MKDV2GCL-ABF.kicad_sym", model="LGA-8_L8.0-W6.0-P1.27-TL_MKDV4GCL-ABF.STEP">
+    trait is_atomic_part<manufacturer="MK", partnumber="MKDV2GCL-ABF", footprint="LGA-8_MKDV_handsolder.kicad_mod", symbol="MKDV2GCL-ABF.kicad_sym", model="LGA-8_L8.0-W6.0-P1.27_MKDV2GCL-ABF.step">
     trait has_part_picked::by_supplier<supplier_id="lcsc", supplier_partno="C51966231", manufacturer="MK", partno="MKDV2GCL-ABF">
     trait has_designator_prefix<prefix="U">
 

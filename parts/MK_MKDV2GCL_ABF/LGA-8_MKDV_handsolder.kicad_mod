@@ -253,5 +253,16 @@
 		(layers "F.Cu" "F.Paste" "F.Mask")
 		(uuid "3767b866-480c-466b-a9e7-9426c9c50146")
 	)
+	(model "${KIPRJMOD}/../../parts/MK_MKDV2GCL_ABF/LGA-8_L8.0-W6.0-P1.27_MKDV2GCL-ABF.step"
+		(offset
+			(xyz 0 0 0)
+		)
+		(scale
+			(xyz 1 1 1)
+		)
+		(rotate
+			(xyz 0 0 0)
+		)
+	)
 	(embedded_fonts no)
 )
