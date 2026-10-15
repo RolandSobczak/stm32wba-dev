@@ -572,6 +572,17 @@
 			(net 27 "+3V3")
 			(uuid "f9454d5e-4500-4b14-b5c0-dbfe8b635066")
 		)
+		(model "${KIPRJMOD}/../../parts/MK_MKDV2GCL_ABF/LGA-8_L8.0-W6.0-P1.27_MKDV2GCL-ABF.step"
+			(offset
+				(xyz 0 0 0)
+			)
+			(scale
+				(xyz 1 1 1)
+			)
+			(rotate
+				(xyz 0 0 0)
+			)
+		)
 		(embedded_fonts no)
 	)
 	(footprint "STMicroelectronics_MLPF_WB55_01E3:FILTER-SMD_6P-L1.6-W1.0-P0.50-BL"
