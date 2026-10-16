@@ -55,9 +55,16 @@ PROJECT_FILE = BOARD.pro
 # na y = 4,70 i przy krawedzi 3,504 zostawalo mu 0,20 mm laminatu zamiast
 # 0,40. Krawedz plytki i polozenie tamtych otworow sa ze soba zwiazane.
 BOARD_X_MM = 8.41          # lewa krawedz laminatu
-BOARD_Y_MM = 3.30          # gorna krawedz laminatu
+BOARD_Y_MM = 2.30          # gorna krawedz laminatu
+# Bylo 3.30. Plytka urosla o 1 mm W GORE - dolna krawedz i wszystko, co
+# rozmieszczone, zostaje na swoim miejscu, a miejsce przybywa tam, gdzie
+# bylo potrzebne: przy antenie. Powod jest podwojny - odsuniecie filtra
+# MLPF od obszaru anteny (jego pady masy nie mialy jak dojsc do wylewki)
+# i zrobienie miejsca na przelotke zwierajaca przy stopie zwieracza.
+# Wplyw na sama antene jest pomijalny: przeciwwaga rosnie z 59,6 na
+# 60,6 mm, czyli o 1,7 %, a i tak jest wieksza od cwierci fali (30,6 mm).
 DEFAULT_W_MM = 32.50
-DEFAULT_H_MM = 59.60
+DEFAULT_H_MM = 60.60
 
 # Promien naroznika. R2,0, a nie R2,5, i to jest poprawka WYMUSZONA:
 # odziedziczony otwor w lewym gornym rogu lezy wewnatrz luku, wiec to luk,
@@ -1032,7 +1039,7 @@ def nowa_wylewka(board: pcbnew.BOARD, warstwa: int, siec) -> pcbnew.ZONE:
     z = pcbnew.ZONE(board)
     z.SetLayer(warstwa)
     z.SetNetCode(siec.GetNetCode())
-    z.SetPadConnection(pcbnew.ZONE_CONNECTION_FULL)
+    z.SetPadConnection(pcbnew.ZONE_CONNECTION_THT_THERMAL)
     z.SetLocalClearance(mm(ZONE_CLEARANCE_MM))
     z.SetMinThickness(mm(0.1))
     z.SetThermalReliefGap(mm(ZONE_CLEARANCE_MM))
@@ -1077,6 +1084,31 @@ def set_zones(board: pcbnew.BOARD, w: float, h: float) -> None:
     ruchy = []
     zastane = {}
     maja_plaszczyzne = set()
+
+    def ustaw_laczenie(z):
+        """Wymusza na wylewce laczenie sie z padami wlasnej sieci.
+
+        Wszystkie szesc wylewek na tej plytce mialo `ZONE_CONNECTION_NONE`,
+        czyli "nie dotykaj zadnego padu". Wylewka trzymala wtedy odstep
+        nawet od padow WLASNEJ sieci, a kazdy pad masy, do ktorego nikt nie
+        dociagnal sciezki ani przelotki, zostawal w powietrzu. Tak wisialy:
+        zwieracz anteny (czyli cala zasada dzialania odwroconej F), masa
+        filtra MLPF i ekrany obu przyciskow. Na F.Cu robilo to 70 wysp.
+
+        `nowa_wylewka()` nadaje nowym strefom `FULL`, ale `set_zones` nigdy
+        nie poprawialo zastanych - i to jest ta luka.
+
+        Tryb `THT_THERMAL`, a nie `FULL`: pady SMD dostaja polaczenie lite
+        (elektrycznie najlepsze), a przelotowe odsprzeganie termiczne.
+        Ta plytka jest lutowana recznie, a lity pad masy na nozce listwy
+        THT odprowadza cieplo szybciej, niz grot je dostarcza.
+        """
+        if int(z.GetPadConnection()) == int(pcbnew.ZONE_CONNECTION_THT_THERMAL):
+            return False
+        z.SetPadConnection(pcbnew.ZONE_CONNECTION_THT_THERMAL)
+        z.SetThermalReliefGap(mm(ZONE_CLEARANCE_MM))
+        z.SetThermalReliefSpokeWidth(mm(ZONE_CLEARANCE_MM))
+        return True
 
     def zgubiona(nazwa: str) -> bool:
         """Czy ta nazwa sieci jest smieciem po przenumerowaniu.
@@ -1139,6 +1171,8 @@ def set_zones(board: pcbnew.BOARD, w: float, h: float) -> None:
                 ruchy.append(f"{z.GetZoneName() or 'strefa zakazu'} -> "
                              f"{len(miedz)} warstw miedzi")
             continue
+        if ustaw_laczenie(z):
+            ruchy.append(f"{z.GetNetname() or 'wylewka'}: pady -> THT_THERMAL")
         warstwy = list(z.GetLayerSet().Seq())
         if len(warstwy) == 1 and warstwy[0] in zewnetrzne:
             # Na F.Cu stoja tez wylewki SYS i VBUS, wiec NIE wolno tu

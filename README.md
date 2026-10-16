@@ -356,8 +356,12 @@ anteny. Skrypt ustawia:
 
 * stos 6-warstwowy (In1 = `GND`, **In4** = `PWR`, In2/In3 sygnałowe), bez niego
   tor RF liczyłby się na ~120 Ω zamiast 50,
-* obrys 32,5 × 59,6 mm z narożnikami R2,0, lewym górnym rogiem w (8,41 / 3,30)
+* obrys 32,5 × **60,6** mm z narożnikami R2,0, lewym górnym rogiem w (8,41 / 2,30)
   i **czterema otworami ⌀3,2 (M3)** odsuniętymi 3,5 mm od obu krawędzi.
+  Płytka urosła o 1 mm **w górę**: dolna krawędź i wszystko, co rozmieszczone,
+  zostało na miejscu, a miejsce przybyło przy antenie — na odsunięcie filtra
+  MLPF i na przelotkę zwierającą. Przeciwwaga anteny rośnie z 59,6 na 60,6 mm,
+  czyli o 1,7 %, i tak będąc dwukrotnie większa od ćwierci fali (30,6 mm).
   Zestaw ⌀2,0 odziedziczony po obrysie 25,8 × 42,2 **został usunięty** —
   zabierał miejsce potrzebne elementom, a żaden stary uchwyt nie jest tego
   wart. Najcieńsza obwódka laminatu: 1,90 mm,
