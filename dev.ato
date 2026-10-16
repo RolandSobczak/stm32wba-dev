@@ -112,8 +112,9 @@ module DevBoard:
     # ─── Szyna 3V3 ───
     power.power_3v3 ~ mcu.power
     power.power_3v3 ~ storage.power
-    power.power_3v3 ~ hdr_power.power
     power.power_3v3 ~ hdr_gpio.power
+    # Lewa listwa nie ma juz szyny zasilania, tylko mase.
+    hdr_power.gnd ~ power.power_3v3.lv
     power.power_3v3 ~ swd_port.power
 
     # ─── USB-C: dane i oba wezly CC ───
@@ -148,23 +149,43 @@ module DevBoard:
     antenna.GND ~ power.power_3v3.lv
 
     # ─── Listwy ───
-    hdr_power.vbus ~ power.usb_port.vbus.hv
-    hdr_power.sys ~ power.power_sys.hv
-    hdr_power.boot0 ~ mcu.boot0
+    # Mapa pozycji jest w naglowku `headers.ato`. Tutaj tylko spiecie;
+    # kolejnosc indeksow `spare` MUSI zgadzac sie z tablica w `mcu.ato`,
+    # bo obie opisuja ten sam ciag nozek.
+    #
+    # `hdr_power` to LEWA listwa (J2), `hdr_gpio` PRAWA (J1). Nazwy nie
+    # opisuja juz zawartosci i zostaja takie swiadomie - patrz naglowek
+    # `headers.ato`.
 
-    # Magistrala SPI1 na lewa listwe. To JEST magistrala pamieci - innej
-    # nie ma, bo ani `SPI1_SCK`, ani `SPI1_MISO` nie maja na tym pakiecie
-    # wolnej nozki. Trzy linie wspolne, CS osobny dla kazdego ukladu:
-    # PA4 zostaje przy pamieci, PA15 wychodzi na pozycje 9.
+    # Lewa: magistrala SPI1. To JEST magistrala pamieci - innej nie ma,
+    # bo ani `SPI1_SCK`, ani `SPI1_MISO` nie maja na tym pakiecie wolnej
+    # nozki. Trzy linie wspolne, CS osobny dla kazdego ukladu: PA4
+    # zostaje przy pamieci, PA15 wychodzi na pozycje 5.
     hdr_power.spi.sclk ~ mcu.sd_spi.sclk
     hdr_power.spi.miso ~ mcu.sd_spi.miso
     hdr_power.spi.mosi ~ mcu.sd_spi.mosi
     hdr_power.ext_cs ~ mcu.ext_cs
 
-    # I2C na prawa listwe. To ta sama magistrala, na ktorej wisi ladowarka
-    # (0x6B) i gauge (0x55) - pull-upy stoja w `power.ato` i drugiego
-    # zestawu doklada sie na wlasna odpowiedzialnosc.
+    hdr_power.spare[0] ~ mcu.spare[3]       # J2-2   <- PA9   USART1_TX
+    hdr_power.spare[1] ~ mcu.spare[4]       # J2-3   <- PA10  USART1_RX
+
+    # Trzy zapasowe wyprowadzenia ekspandera. P3 i P7 zostaja na plytce.
+    hdr_power.exp[0] ~ expander.exp_spare[1]   # J2-10  <- P4
+    hdr_power.exp[1] ~ expander.exp_spare[2]   # J2-11  <- P5
+    hdr_power.exp[2] ~ expander.exp_spare[3]   # J2-12  <- P6
+
+    # Prawa: zasilanie, I2C, piec nozek i BOOT0. I2C to ta sama
+    # magistrala, na ktorej wisi ladowarka (0x6B) i gauge (0x55) -
+    # pull-upy stoja w `power.ato` i drugiego zestawu doklada sie na
+    # wlasna odpowiedzialnosc.
     hdr_gpio.i2c ~ power.pmic_i2c
+    hdr_gpio.boot0 ~ mcu.boot0
+
+    hdr_gpio.spare[0] ~ mcu.spare[1]        # J1-2   <- PA3   LPUART1_RX
+    hdr_gpio.spare[1] ~ mcu.spare[2]        # J1-3   <- PA8   USART1_CK
+    hdr_gpio.spare[2] ~ mcu.spare[5]        # J1-7   <- PB6   USART1_TX alt
+    hdr_gpio.spare[3] ~ mcu.spare[6]        # J1-8   <- PB7   USART1_RX alt
+    hdr_gpio.spare[4] ~ mcu.spare[0]        # J1-9   <- PA2   LPUART1_TX
 
     # ─── SWD ───
     # Osobne zlacze ARM Cortex Debug 2x5, a nie cztery pozycje na listwie.
@@ -172,18 +193,6 @@ module DevBoard:
     # naglowek `headers.ato`. VTref idzie z szyny 3V3 wyzej.
     swd_port.swd ~ mcu.swd
     swd_port.reset ~ mcu.reset
-
-    # Dziewiec wolnych nozek. Kolejnosc musi zgadzac sie z tablica
-    # w `mcu.ato` - obie opisuja ten sam ciag. Wypisane po jednej, bo
-    # to jedyna postac, w ktorej widac obie strony naraz: po lewej
-    # pozycja na listwie, po prawej nozka procesora.
-    hdr_gpio.spare[0] ~ mcu.spare[0]    # listwa 2  <- PA2   LPUART1_TX
-    hdr_gpio.spare[1] ~ mcu.spare[1]    # listwa 3  <- PA3   LPUART1_RX
-    hdr_gpio.spare[2] ~ mcu.spare[2]    # listwa 4  <- PA8   USART1_CK
-    hdr_gpio.spare[3] ~ mcu.spare[3]    # listwa 5  <- PA9   USART1_TX
-    hdr_gpio.spare[4] ~ mcu.spare[4]    # listwa 6  <- PA10  USART1_RX
-    hdr_gpio.spare[5] ~ mcu.spare[5]    # listwa 9  <- PB6   USART1_TX alt
-    hdr_gpio.spare[6] ~ mcu.spare[6]    # listwa 10 <- PB7   USART1_RX alt
 
     # ─── Przyciski systemowe ───
     # RESET i BOOT0 wprost na linie, ktore i tak sa na plytce. Nie

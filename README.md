@@ -16,7 +16,7 @@ USB-C ──▶ BQ25896 ──┬──▶ SYS ──▶ TPS63020 ──▶ 3V3 
 ```
 
 Obrys 32,5 × 59,6 mm, sześć warstw, narożniki R2,0, **dwa zestawy otworów**:
-cztery M3 (⌀3,2) odsunięte 4,5 mm od krawędzi i cztery ⌀2,0 odziedziczone
+cztery M3 (⌀3,2) odsunięte 3,5 mm od krawędzi
 po obrysie 25,8 × 42,2.
 
 ## Co jest wzięte z `gps_tracker-6l`
@@ -140,14 +140,29 @@ przelotkę z wiertłem poniżej progu — razem z pozycją i siecią.
 Listwy (opis i uzasadnienie kolejności w `headers.ato`):
 
 ```
-LEWA (zasilanie + SPI1)             PRAWA (UART-y, I2C, wolne nóżki)
- 1 VBUS      7 GND                   1 +3V3       7 PMIC_SCL
- 2 SYS       8 SD_MOSI               2 PA2        8 PMIC_SDA
- 3 +3V3      9 EXT_CS                3 PA3        9 PB6
- 4 GND      10 GND                   4 PA8       10 PB7
- 5 SD_CLK   11 BOOT0                 5 PA9       11 GND
- 6 SD_MISO  12 GND                   6 PA10      12 GND
+LEWA / J2 (SPI1 + rozszerzenia)     PRAWA / J1 (zasilanie, I2C, GPIO)
+ 1 SD_CLK    7 GND                   1 +3V3       7 PB6
+ 2 PA9       8 SD_MOSI               2 PA3        8 PB7
+ 3 PA10      9 GND                   3 PA8        9 PA2
+ 4 GND      10 EXP_P4                4 PMIC_SCL  10 +3V3
+ 5 EXT_CS   11 EXP_P5                5 GND       11 GND
+ 6 SD_MISO  12 EXP_P6                6 PMIC_SDA  12 BOOT0
 ```
+
+Układ pozycji powstał przy trasowaniu, nie przy planowaniu — kolejność
+widać dopiero wtedy, gdy linie zaczynają się krzyżować. Przeniesieniem
+tego z płytki z powrotem do `.ato` zajmuje się `tools/sync_headers.py`.
+
+**Na lewej listwie nie ma zasilania, tylko masa** (pozycje 4, 7, 9).
++3V3 przeniosło się w całości na prawą, gdzie stoi na dwóch pozycjach
+(1 i 10) razem z dwiema masami (5 i 11) — przy listwie, z której coś się
+zasila, jedna para na dwanaście pozycji oznacza długą drogę powrotną.
+`VBUS` i `SYS` zniknęły z listew; obie sieci nadal są na płytce, tylko
+nie wychodzą na goldpiny.
+
+**Trzy zapasowe wyprowadzenia ekspandera (P4, P5, P6) wyszły na J2.**
+P3 i P7 zostają na płytce. Osiem wyprowadzeń po drugiej stronie I2C jest
+więcej warte na listwie niż w powietrzu.
 
 ### Jakie magistrale z tego wychodzą
 
@@ -331,11 +346,11 @@ anteny. Skrypt ustawia:
 
 * stos 6-warstwowy (In1 = `GND`, **In4** = `PWR`, In2/In3 sygnałowe), bez niego
   tor RF liczyłby się na ~120 Ω zamiast 50,
-* obrys 32,5 × 59,6 mm z narożnikami R2,0, lewym górnym rogiem w (8,41 / 3,30),
-  i dwa zestawy otworów nieplaterowanych: **4 × ⌀3,2 (M3)** odsunięte 4,5 mm
-  od obu krawędzi oraz **4 × ⌀2,0** odziedziczone po obrysie 25,8 × 42,2,
-  w stałych miejscach (10,18 / 4,70), (33,18 / 4,70), (10,18 / 44,10),
-  (33,18 / 44,10). Najcieńsza obwódka laminatu w całym komplecie: 0,36 mm,
+* obrys 32,5 × 59,6 mm z narożnikami R2,0, lewym górnym rogiem w (8,41 / 3,30)
+  i **czterema otworami ⌀3,2 (M3)** odsuniętymi 3,5 mm od obu krawędzi.
+  Zestaw ⌀2,0 odziedziczony po obrysie 25,8 × 42,2 **został usunięty** —
+  zabierał miejsce potrzebne elementom, a żaden stary uchwyt nie jest tego
+  wart. Najcieńsza obwódka laminatu: 1,90 mm,
 * wylewki masy na F.Cu i B.Cu, płaszczyzny na In1 i In4,
 * klasy sieci — m.in. **RF 0,39 mm** (`RF1`, `ANT`) i **USB 0,28 mm**
   (`USB_D_P`/`USB_D_N` przy procesorze, `USB_CONN_P`/`USB_CONN_N` przy
@@ -389,12 +404,15 @@ Czego pilnować przy rozmieszczaniu (uzasadnienia w nagłówku `dev.ato`):
   rozmieszczeniem), **25,8 × 42,2** (po pierwszym rozmieszczeniu), **51,6 × 84,4**
   (×2 — przesada), **38,7 × 63,3** (×1,5) i **32,5 × 59,6** (docięte ręcznie
   pod rozmieszczenie i tu wyrównane).
-* **Otwory M3 nie są współśrodkowe z narożnikami** i to jest poprawka po
-  błędzie: płytka rosła w prawo i w dół, więc lewy górny róg nowej płytki
-  to ten sam róg, co starej — a tam już siedział otwór ⌀2,0. Oba wypadały
-  1,49 mm od siebie przy wymaganych 2,60 i zlewały się w jedną dziurę.
-* Narożnik ma **R2,0, nie R2,5**: lewy górny ⌀2,0 leży wewnątrz łuku, więc
-  to łuk wyznacza mu obwódkę. Przy R2,5 zostawało 0,18 mm, przy R2,0 — 0,36.
+* **Otwory M3 nie są współśrodkowe z narożnikami.** Historycznie wynikało to
+  z kolizji z zestawem ⌀2,0 — oba wypadały 1,49 mm od siebie przy wymaganych
+  2,60 i zlewały się w jedną dziurę. Zestaw ⌀2,0 od tego czasu zniknął, ale
+  odsunięcie zostało: przy rozmieszczaniu okazało się, że przy 4,5 mm łebki
+  śrub wchodzą w pole potrzebne elementom, więc odstęp zszedł na **3,5 mm**.
+* Narożnik ma **R2,0, nie R2,5** — to też pozostałość po zestawie ⌀2,0,
+  któremu łuk wyznaczał obwódkę (0,18 mm przy R2,5 wobec 0,36 przy R2,0).
+  Przy samych M3 w 3,5 mm od krawędzi obwódka wynosi 1,90 mm i promień
+  narożnika przestał ją ograniczać.
   Wymiary i położenie rogu siedzą w stałych `BOARD_X_MM` / `BOARD_Y_MM` /
   `DEFAULT_W_MM` / `DEFAULT_H_MM`, żeby skrypt je **odtwarzał**, a nie
   nadpisywał — inaczej pierwsze uruchomienie po ręcznej poprawce

@@ -82,10 +82,18 @@ CORNER_R_MM = 2.0
 #    sa wzgledem rogu obrysu, wiec przy kazdej zmianie polozenia plytki
 #    trzeba je przeliczyc - i dlatego `sprawdz_otwory` pilnuje obwodki.
 MOUNT_HOLE_D_MM = 3.2          # nowy zestaw, M3 z luzem
-MOUNT_EDGE_MM = 4.5            # srodek otworu M3 od KAZDEJ z dwoch krawedzi
-MOUNT_LEGACY_D_MM = 2.0        # zestaw odziedziczony, M2
-MOUNT_LEGACY_MM = ((1.77, 1.40), (24.77, 1.40), (24.77, 40.80), (1.77, 40.80))
-MOUNT_LEGACY_KEEPOUT_D_MM = 4.5   # lebek i podkladka M2
+MOUNT_EDGE_MM = 3.5            # srodek otworu M3 od KAZDEJ z dwoch krawedzi
+# Bylo 4.5. Zmienione na 3.5 po przesunieciu otworow w KiCadzie przy
+# rozmieszczaniu - przy 4.5 lebki wchodzily w pole potrzebne elementom.
+# Obwodka laminatu schodzi z 2,90 na 1,90 mm, czyli nadal szescikrotnie
+# powyzej progu `MOUNT_MIN_WEB_MM`.
+#
+# Zestaw odziedziczony (cztery otwory 2,0 mm po obrysie 25,8 x 42,2)
+# ZOSTAL USUNIETY. Istnial po to, zeby plytka wchodzila w stare uchwyty
+# z poprzedniej konstrukcji; przy tym rozmieszczeniu zabieral miejsce
+# potrzebne elementom, a zaden uchwyt nie jest na tyle wazny, zeby
+# rozpychac plytke. Stale `MOUNT_LEGACY_*` znikly razem z nim - gdyby
+# kiedys mialy wrocic, wracaja z historii gita, a nie z martwego kodu.
 MOUNT_MIN_WEB_MM = 0.30        # minimum laminatu miedzy otworem a krawedzia
 MOUNT_KEEPOUT_D_MM = 7.0   # lebek i podkladka M3
 
@@ -535,15 +543,16 @@ def obwodka_mm(cx: float, cy: float, d: float,
 
 def draw_mounting_holes(board: pcbnew.BOARD, w: float, h: float,
                         r: float, ox: float = 0.0, oy: float = 0.0) -> list:
-    """Otwory montazowe jako okregi na Edge.Cuts - DWA zestawy.
+    """Otwory montazowe M3 jako okregi na Edge.Cuts.
 
     Okrag na warstwie krawedzi to dla producenta polecenie frezowania,
     czyli otwor NIEPLATEROWANY. Tak ma byc: sruba w otworze platerowanym
     zwieralaby to, co akurat obok niej lezy na plaszczyznach.
 
-    Zestaw M3 jest odsuniety od rogow o `MOUNT_EDGE_MM`, a nie wspolsrodkowy
-    z lukami - uzasadnienie przy stalej. Zestaw odziedziczony ma wspolrzedne
-    wpisane wprost, bo nie wynikaja juz z zadnej krawedzi.
+    Zestaw jest JEDEN - cztery otwory M3 odsuniete od rogow o
+    `MOUNT_EDGE_MM`, a nie wspolsrodkowe z lukami naroznikow. Drugi,
+    odziedziczony po obrysie 25,8 x 42,2, zostal usuniety przy
+    rozmieszczaniu elementow.
 
     Kazdy otwor jest sprawdzany na dwie rzeczy: obwodke do krawedzi (razem
     z lukiem naroznika) i odleglosc do kazdego innego otworu. Oba bledy
@@ -563,8 +572,6 @@ def draw_mounting_holes(board: pcbnew.BOARD, w: float, h: float,
     zestawy = [
         ("M3, %.1f mm od krawedzi" % e, MOUNT_HOLE_D_MM,
          [(e, e), (w - e, e), (w - e, h - e), (e, h - e)]),
-        ("odziedziczone po obrysie 25,8 x 42,2", MOUNT_LEGACY_D_MM,
-         list(MOUNT_LEGACY_MM)),
     ]
 
     wszystkie = [(cx, cy, d) for _, d, lista in zestawy for cx, cy in lista]

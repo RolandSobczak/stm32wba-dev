@@ -139,56 +139,87 @@ from "parts/PinHeader_1x12/PinHeader_1x12.ato" import PinHeader_1x12_package
 
 
 module PowerDebugHeader:
-    """Lewa listwa: zasilanie, BOOT0 i komplet SPI1 z wlasnym CS."""
+    """LEWA listwa (J2): magistrala SPI1, USART1 i trzy wyprowadzenia ekspandera.
+
+    **Nazwa jest historyczna i nie opisuje juz zawartosci.** Ta listwa
+    niosla kolejno "zasilanie + SWD", "zasilanie + SPI1", a teraz SPI1
+    z rozszerzeniami - zasilania nie ma na niej wcale, zostala sama masa.
+    Nazwa zostaje mimo to, bo atopile wiaze footprint ze SCIEZKA INSTANCJI:
+    zmiana `PowerDebugHeader` na cokolwiek innego sprawia, ze przy
+    najblizszym `ato build` listwa jest NOWYM elementem i laduje
+    w punkcie (0, 0), tracac rozmieszczenie i trasowanie. Sprawdzone na
+    zywym projekcie - kosztowalo to jedno przywracanie z kopii.
+
+    **Zasilania tu nie ma, tylko masa na pozycjach 4, 7 i 9.** +3V3
+    przenioslo sie w calosci na prawa listwe, VBUS i SYS zniknely
+    z listew przy rozmieszczaniu - obie sieci nadal sa na plytce, tylko
+    nie wychodza na goldpiny.
+    """
     conn = new PinHeader_1x12_package
 
-    power = new ElectricPower        # +3V3 i masa
-    vbus = new Electrical            # z gniazda USB-C
-    sys = new Electrical             # szyna SYS z ladowarki
-    boot0 = new ElectricLogic
+    gnd = new Electrical
 
     # Ta sama magistrala, na ktorej siedzi SD NAND - patrz naglowek.
     # `cs` tego interfejsu NIE jest tu podlaczone: CS pamieci zostaje
-    # na plytce, a uklad zewnetrzny dostaje wlasny na pozycji 9.
+    # na plytce, a uklad zewnetrzny dostaje wlasny na pozycji 5.
     spi = new SpiWithCs
     ext_cs = new Electrical
 
-    conn.p1 ~ vbus
-    conn.p2 ~ sys
-    conn.p3 ~ power.hv
-    conn.p4 ~ power.lv
-    conn.p5 ~ spi.sclk.line
-    conn.p6 ~ spi.miso.line
-    conn.p7 ~ power.lv
-    conn.p8 ~ spi.mosi.line
-    conn.p9 ~ ext_cs
-    conn.p10 ~ power.lv
-    conn.p11 ~ boot0.line
-    conn.p12 ~ power.lv
+    # PA9 i PA10, czyli USART1 w komplecie, obie polowki obok siebie.
+    spare = new Electrical[2]
+
+    # P4, P5 i P6 ekspandera. Po to zapasy sa - osiem wyprowadzen po
+    # drugiej stronie I2C jest wiecej warte na listwie niz w powietrzu.
+    exp = new Electrical[3]
+
+    conn.p1 ~ spi.sclk.line   # SD_CLK   SPI1_SCK
+    conn.p2 ~ spare[0]        # PA9      USART1_TX
+    conn.p3 ~ spare[1]        # PA10     USART1_RX
+    conn.p4 ~ gnd
+    conn.p5 ~ ext_cs          # EXT_CS   SPI1_NSS (PA15)
+    conn.p6 ~ spi.miso.line   # SD_MISO  SPI1_MISO
+    conn.p7 ~ gnd
+    conn.p8 ~ spi.mosi.line   # SD_MOSI  SPI1_MOSI
+    conn.p9 ~ gnd
+    conn.p10 ~ exp[0]         # EXP_P4
+    conn.p11 ~ exp[1]         # EXP_P5
+    conn.p12 ~ exp[2]         # EXP_P6
 
 
 module GpioHeader:
-    """Prawa listwa: dwa UART-y, I2C zasilania i siedem wolnych nozek.
+    """PRAWA listwa (J1): zasilanie, I2C, piec nozek procesora i BOOT0.
 
-    Kolejnosc `spare[0..6]` jest ta sama, co w `mcu.ato` - obie listy
+    Kolejnosc `spare[0..4]` jest ta sama, co w `mcu.ato` - obie listy
     opisuja ten sam ciag nozek i rozjechanie sie ich byloby bledem
     niewidocznym az do pierwszego pomiaru.
+
+    **+3V3 jest na dwoch pozycjach (1 i 10), masa na dwoch (5 i 11).**
+    Przy listwie, z ktorej zasila sie cos wpietego z boku, jedna para
+    zasilania na dwanascie pozycji oznacza dlugi powrot przez cala
+    listwe. Dwie pary skracaja go o polowe i kosztuja dwie pozycje,
+    ktorych i tak nie bylo czym obsadzic.
+
+    **BOOT0 przeniosl sie tutaj z lewej listwy** i sasiaduje z +3V3 przez
+    dwie pozycje (12 i 10). Wejscie w bootloader to zworka miedzy nimi -
+    blizej niz wczesniej, ale nadal nie obok siebie, wiec kropla cyny nie
+    wprowadzi plytki w DFU sama z siebie.
     """
     conn = new PinHeader_1x12_package
 
     power = new ElectricPower
     i2c = new I2C                    # TA SAMA, co PMIC - patrz naglowek
-    spare = new Electrical[7]
+    boot0 = new ElectricLogic
+    spare = new Electrical[5]
 
     conn.p1 ~ power.hv
-    conn.p2 ~ spare[0]       # PA2   LPUART1_TX
-    conn.p3 ~ spare[1]       # PA3   LPUART1_RX
-    conn.p4 ~ spare[2]       # PA8   USART1_CK
-    conn.p5 ~ spare[3]       # PA9   USART1_TX
-    conn.p6 ~ spare[4]       # PA10  USART1_RX
-    conn.p7 ~ i2c.scl.line   # PB8   I2C1_SCL
-    conn.p8 ~ i2c.sda.line   # PB9   I2C1_SDA
-    conn.p9 ~ spare[5]       # PB6   USART1_TX / I2C1_SCL
-    conn.p10 ~ spare[6]      # PB7   USART1_RX / I2C1_SDA
+    conn.p2 ~ spare[0]       # PA3   LPUART1_RX
+    conn.p3 ~ spare[1]       # PA8   USART1_CK
+    conn.p4 ~ i2c.scl.line   # PB8   I2C1_SCL
+    conn.p5 ~ power.lv
+    conn.p6 ~ i2c.sda.line   # PB9   I2C1_SDA
+    conn.p7 ~ spare[2]       # PB6   USART1_TX / I2C1_SCL
+    conn.p8 ~ spare[3]       # PB7   USART1_RX / I2C1_SDA
+    conn.p9 ~ spare[4]       # PA2   LPUART1_TX
+    conn.p10 ~ power.hv
     conn.p11 ~ power.lv
-    conn.p12 ~ power.lv
+    conn.p12 ~ boot0.line

@@ -6,7 +6,7 @@ import is_auto_generated
 component Samsung_Electro_Mechanics_CL10A226MP8NUNE_package:
     # This trait marks this file as auto-generated
     # If you want to manually change it, remove the trait
-    trait is_auto_generated<system="ato_part", source="easyeda:C86295", date="2026-10-15T15:35:23.671782+00:00", checksum="e7c65eb4d028fcf08254394d6c464baccbcdb7163891128894142c5ba5f4cce5">
+    trait is_auto_generated<system="ato_part", source="easyeda:C86295", date="2026-10-16T08:56:47.619095+00:00", checksum="ab92c99bf40fbeb4ef3ebfeebc190e6c68547ae97707134f586883d2ff61d1ce">
 
     trait is_atomic_part<manufacturer="Samsung Electro-Mechanics", partnumber="CL10A226MP8NUNE", footprint="C0603.kicad_mod", symbol="CL10A226MP8NUNE.kicad_sym", model="C0603_L1.6-W0.8-H0.8.step">
     trait has_part_picked::by_supplier<supplier_id="lcsc", supplier_partno="C86295", manufacturer="Samsung Electro-Mechanics", partno="CL10A226MP8NUNE">

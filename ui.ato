@@ -332,9 +332,9 @@ module IoExpander:
     ic.P6 ~ exp_spare[3]
     ic.P7 ~ exp_spare[4]
     exp_spare[0].override_net_name = "EXP_P3_NC"
-    exp_spare[1].override_net_name = "EXP_P4_NC"
-    exp_spare[2].override_net_name = "EXP_P5_NC"
-    exp_spare[3].override_net_name = "EXP_P6_NC"
+    exp_spare[1].override_net_name = "EXP_P4"
+    exp_spare[2].override_net_name = "EXP_P5"
+    exp_spare[3].override_net_name = "EXP_P6"
     exp_spare[4].override_net_name = "EXP_P7_NC"
 
     # ─── Nazwy sieci ───
