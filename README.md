@@ -95,6 +95,16 @@ na prawą listwę, PA15 na lewą jako CS, PB5 na diodę.
                                                  49 EP      GND  (jedyna masa!)
 ```
 
+**Szycie liczy się z kształtem padu, nie z jego obrysem.** Pady termiczne
+z EasyEDA to wielokąty: TPS63020 ma grzebień wycięć na nóżki, a BQ27441
+kształt teowy ze środkową belką 2,0 × 1,95 mm i dwoma pionowymi pasami
+szerokimi na 0,22 mm. Siatka rozłożona na prostokącie obrysu stawiałaby
+przelotki w wycięciach — na gołym laminacie między nóżkami. Dlatego każda
+pozycja jest sprawdzana dwa razy: czy **cała** przelotka mieści się
+w miedzi padu (środek plus cztery punkty na obwodzie) i czy nie wchodzi
+w cudzą miedź na którejkolwiek warstwie — przelotka jest przelotowa, więc
+przebija też In2, In3 i B.Cu, gdzie leżą sygnały.
+
 **Masa układu jest wyłącznie na padzie pod obudową** — UFQFPN-48 nie ma ani
 jednej nóżki VSS. Pad dostaje **siatkę 5×5 = 25 przelotek** 0,50/0,30 mm
 w rastrze 1,12 mm, stawianą przez `tools/board_setup.py`. Bez niej masa

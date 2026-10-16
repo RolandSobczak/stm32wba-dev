@@ -652,8 +652,16 @@ def stitch_thermal_pads(board: pcbnew.BOARD) -> list:
         for pad in fp.Pads():
             if pad.GetNetname() != "GND":
                 continue
-            w = pcbnew.ToMM(pad.GetSizeX())
-            h = pcbnew.ToMM(pad.GetSizeY())
+            # Wymiar bierzemy z OBRYSU, nie z `GetSizeX/Y`. Pad typu
+            # `custom` trzyma w tych polach rozmiar KOTWICY, a prawdziwy
+            # ksztalt siedzi w `primitives` - i tak sa zrobione pady
+            # termiczne TPS63020 i BQ27441, ktore przyszly z EasyEDA.
+            # Przez caly czas raportowalo je tu jako "zaslepki 0,01 mm"
+            # i zostawialo bez szycia, choc maja 6,95 i 8,09 mm2 miedzi
+            # z pasta i siecia GND. Obrys widzi jedno i drugie.
+            bb = pad.GetBoundingBox()
+            w = pcbnew.ToMM(bb.GetWidth())
+            h = pcbnew.ToMM(bb.GetHeight())
             if w * h >= STITCH_MIN_PAD_MM2:
                 kandydaci.append((fp.GetReference(), pad, w, h))
             elif w * h < 0.1:
@@ -682,45 +690,114 @@ def stitch_thermal_pads(board: pcbnew.BOARD) -> list:
         board.Delete(t)
 
     # ─── Siatka ───
+    # Przelotki rozklada sie po RZECZYWISTEJ miedzi padu, nie po jego
+    # prostokatnym obrysie. Pady termiczne z EasyEDA sa wielokatami:
+    #
+    #   TPS63020 - prostokat z grzebieniem wyciec na nozki,
+    #   BQ27441  - ksztalt teowy: srodkowa belka 2,0 x 1,95 mm i dwa
+    #              pionowe pasy szerokie na 0,22 mm, w ktore zadna
+    #              przelotka 0,5 mm nie wejdzie.
+    #
+    # Siatka na obrysie stawiala przelotki w wycieciach i w waskich
+    # pasach - czyli na golym laminacie miedzy nozkami przetwornicy.
+    # Zamiast tego: gesty raster kandydatow, kazdy sprawdzony na
+    # przynaleznosc do miedzi, i zachlanny wybor z zachowaniem odstepu.
+    KROK_PROBKI_MM = 0.1
     wynik = []
     for ref, pad, w, h in kandydaci:
-        def os(dlugosc):
-            uzyteczna = dlugosc - PAD_VIA_DIA_MM - 2 * STITCH_MARGIN_MM
-            if uzyteczna < 0:
-                return [], 0.0
-            n = int(uzyteczna // STITCH_PITCH_MM) + 1
-            krok = uzyteczna / (n - 1) if n > 1 else 0.0
-            return [-uzyteczna / 2 + i * krok for i in range(n)], krok
-
-        xs, kx = os(w)
-        ys, ky = os(h)
-        if not xs or not ys:
-            raise SystemExit(f"pad termiczny {ref} ma {w} x {h} mm - za malo "
-                             f"na przelotke {PAD_VIA_DIA_MM} mm z marginesem "
-                             f"{STITCH_MARGIN_MM}")
-        kat = pad.GetOrientation().AsRadians()
-        cos_a, sin_a = math.cos(kat), math.sin(kat)
         srodek = pad.GetPosition()
-        for lx in xs:
-            for ly in ys:
-                x = srodek.x + mm(lx * cos_a + ly * sin_a)
-                y = srodek.y + mm(-lx * sin_a + ly * cos_a)
-                v = pcbnew.PCB_VIA(board)
-                v.SetViaType(pcbnew.VIATYPE_THROUGH)
-                v.SetLayerPair(pcbnew.F_Cu, pcbnew.B_Cu)
-                v.SetPosition(pcbnew.VECTOR2I(int(x), int(y)))
-                # `SetWidth` bez warstwy jest w KiCadzie 9 przestarzale
-                # (przelotka moze miec rozna srednice na kazdej warstwie)
-                # i sypie ostrzezeniem przy kazdym wywolaniu.
-                v.SetWidth(pcbnew.F_Cu, mm(PAD_VIA_DIA_MM))
-                v.SetDrill(mm(PAD_VIA_DRILL_MM))
-                v.SetNet(gnd)
-                board.Add(v)
-        wynik.append((ref, len(xs), len(ys), kx, ky, w, h))
+        r = mm(PAD_VIA_DIA_MM / 2)
+
+        def w_miedzi(x, y):
+            """Czy CALA przelotka miesci sie w miedzi padu.
+
+            Sprawdzamy srodek i cztery punkty na obwodzie. Sam srodek nie
+            wystarcza: przelotka przy krawedzi wielokata wystawalaby poza
+            miedz, a tego nie widac inaczej niz w DRC przy gotowej plytce.
+            """
+            return all(
+                pad.HitTest(pcbnew.VECTOR2I(int(x + dx), int(y + dy)), 0)
+                for dx, dy in ((0, 0), (r, 0), (-r, 0), (0, r), (0, -r)))
+
+        bb = pad.GetBoundingBox()
+        nx = max(1, int(pcbnew.ToMM(bb.GetWidth()) / KROK_PROBKI_MM))
+        ny = max(1, int(pcbnew.ToMM(bb.GetHeight()) / KROK_PROBKI_MM))
+        kandydaci_xy = []
+        for i in range(nx + 1):
+            for j in range(ny + 1):
+                x = bb.GetLeft() + int(i * bb.GetWidth() / nx)
+                y = bb.GetTop() + int(j * bb.GetHeight() / ny)
+                if w_miedzi(x, y):
+                    d = (x - srodek.x) ** 2 + (y - srodek.y) ** 2
+                    kandydaci_xy.append((d, x, y))
+        # Od srodka na zewnatrz: przelotka w srodku padu odprowadza cieplo
+        # lepiej niz przy krawedzi, a przy ciasnym ksztalcie to ona ma
+        # pierwszenstwo.
+        kandydaci_xy.sort()
+
+        # Drugi warunek: przelotka jest PRZELOTOWA, wiec przebija takze
+        # In2, In3 i B.Cu - a tam moga lezec cudze sciezki. Pierwsze
+        # uruchomienie tego kodu postawilo pod U3 i U5 komplet przelotek
+        # w miedzi padu i zrobilo 18 zwarc z SD_CLK, SD_MISO, SD_MOSI,
+        # PB6, CHG_CE, CHG_PG i GAUGE_INT na warstwach wewnetrznych.
+        # Stawiamy wiec tylko tam, gdzie nic obcego nie przeszkadza.
+        promien = mm(PAD_VIA_DIA_MM / 2) + mm(CLEARANCE_MM)
+        obce = []
+        for t in board.GetTracks():
+            if t.Type() == pcbnew.PCB_VIA_T:
+                continue
+            if t.GetNetname() == "GND":
+                continue
+            obce.append((t.GetStart(), t.GetEnd(),
+                         t.GetWidth() // 2 + promien))
+
+        def wolne(x, y):
+            """Czy w tym miejscu przelotka nie wejdzie w cudza miedz."""
+            for a_, b_, luz in obce:
+                dx, dy = b_.x - a_.x, b_.y - a_.y
+                dl = dx * dx + dy * dy
+                if dl == 0:
+                    t = 0.0
+                else:
+                    t = ((x - a_.x) * dx + (y - a_.y) * dy) / dl
+                    t = max(0.0, min(1.0, t))
+                px, py = a_.x + t * dx, a_.y + t * dy
+                if (x - px) ** 2 + (y - py) ** 2 < luz * luz:
+                    return False
+            return True
+
+        minimum = mm(STITCH_PITCH_MM) ** 2
+        wybrane, kolizje = [], 0
+        for _, x, y in kandydaci_xy:
+            if any((x - px) ** 2 + (y - py) ** 2 < minimum for px, py in wybrane):
+                continue
+            if not wolne(x, y):
+                kolizje += 1
+                continue
+            wybrane.append((x, y))
+
+        if not wybrane:
+            print(f"  UWAGA: {ref} - pod padem termicznym nie ma miejsca na "
+                  f"ani jedna przelotke; cudza miedz na warstwach "
+                  f"wewnetrznych blokuje caly pad")
+
+        for x, y in wybrane:
+            v = pcbnew.PCB_VIA(board)
+            v.SetViaType(pcbnew.VIATYPE_THROUGH)
+            v.SetLayerPair(pcbnew.F_Cu, pcbnew.B_Cu)
+            v.SetPosition(pcbnew.VECTOR2I(int(x), int(y)))
+            # `SetWidth` bez warstwy jest w KiCadzie 9 przestarzale
+            # (przelotka moze miec rozna srednice na kazdej warstwie)
+            # i sypie ostrzezeniem przy kazdym wywolaniu.
+            v.SetWidth(pcbnew.F_Cu, mm(PAD_VIA_DIA_MM))
+            v.SetDrill(mm(PAD_VIA_DRILL_MM))
+            v.SetNet(gnd)
+            board.Add(v)
+        wynik.append((ref, len(wybrane), w, h, kolizje))
 
     for ref, nazwa_padu, w, h in odrzucone:
-        print(f"  UWAGA: {ref} pad {nazwa_padu} ma {w:.2f} x {h:.2f} mm - to "
-              f"zaslepka, nie pad termiczny; NIE SZYTY")
+        print(f"  UWAGA: {ref} pad {nazwa_padu} ma obrys {w:.2f} x {h:.2f} mm - "
+              f"za maly na pad termiczny; NIE SZYTY")
     return wynik, len(stare)
 
 
@@ -986,7 +1063,8 @@ def set_zones(board: pcbnew.BOARD, w: float, h: float) -> None:
     obrysowana wzdluz zaokraglonej krawedzi laminatu i to jest lepszy zarys
     niz prostokat, ktory tu powstaje przy tworzeniu nowej.
 
-    Wypelnien nie liczy - od tego jest `fill_zones.py`.
+    Wypelnien nie liczy - robi to `main()` po szyciu, bo dopiero wtedy
+    znana jest ostateczna liczba przelotek.
     """
     miedz = warstwy_miedzi()
     numery = dict(miedz)
@@ -1390,6 +1468,15 @@ def main() -> None:
     # z przebudowa wylewek.
     szycie, skasowane = stitch_thermal_pads(board)
     za_cienkie = sprawdz_przelotki(board)
+
+    # Wylanie stref MUSI byc po szyciu i przed zapisem. Ten skrypt dodaje
+    # i kasuje przelotki, a wylewka wylana wczesniej nie ma wokol nowych
+    # przelotek otworow izolacyjnych - DRC zglasza wtedy naruszenia
+    # otworu i mostki maski, ktorych w miedzi nie ma. Zanim to tu weszlo,
+    # plytka miala z tego powodu 3 naruszenia otworu i 2 mostki maski,
+    # ktore znikly same po pierwszym wylaniu.
+    wylane = pcbnew.ZONE_FILLER(board).Fill(board.Zones())
+
     board.Save(str(PCB))
     # Kontur sprawdza sie na ZAPISANYM pliku, nie na obiekcie w pamieci.
     # Dwa powody, oba praktyczne: sprawdzamy to, co naprawde pojedzie do
@@ -1412,11 +1499,14 @@ def main() -> None:
               f"wysrodkowana na punkcie zasilania ({x:.2f}, {y:.2f})")
     else:
         print("UWAGA: nie znalazlem footprintu anteny - strefy zakazu NIE MA")
-    for ref, nx, ny, kx, ky, w, h in szycie:
-        print(f"szycie {ref}: {nx}x{ny} = {nx * ny} przelotek "
-              f"{PAD_VIA_DIA_MM}/{PAD_VIA_DRILL_MM} mm w padzie {w:.2f} x {h:.2f}, "
-              f"raster {kx:.2f} x {ky:.2f} mm" + (f" (skasowano {skasowane} starych)"
-              if skasowane else ""))
+    for ref, ile, w, h, kolizje in szycie:
+        blok = f", {kolizje} miejsc zablokowanych cudza miedzia" if kolizje else ""
+        print(f"szycie {ref}: {ile} przelotek {PAD_VIA_DIA_MM}/"
+              f"{PAD_VIA_DRILL_MM} mm w miedzi padu {w:.2f} x {h:.2f} mm, "
+              f"odstep >= {STITCH_PITCH_MM} mm{blok}"
+              + (f" (skasowano {skasowane} starych)" if skasowane else ""))
+    print(f"wylewki: {'wylane' if wylane else 'NIE UDALO SIE WYLAC'} "
+          f"({len([z for z in board.Zones() if not z.GetIsRuleArea()])} stref)")
     print(f"obrys zamkniety: {ksztaltow} ksztaltow, kazdy wierzcholek laczy dwa")
     if not za_cienkie:
         print(f"wszystkie przelotki maja wiertlo >= "
