@@ -370,6 +370,13 @@ anteny. Skrypt ustawia:
   (`USB_D_P`/`USB_D_N` przy procesorze, `USB_CONN_P`/`USB_CONN_N` przy
   gnieździe — przyrostki `_P`/`_N` są warunkiem, żeby KiCad w ogóle
   rozpoznał parę różnicową),
+* **pad lądowania 1,10 × 1,10 mm pod zwieraczem anteny** — jedyny prostokąt
+  spoza Table 1 noty AN043. Stopa zwieracza z noty ma 0,90 × 0,50 mm, a
+  przelotka 0,5 mm z odstępem potrzebuje 0,80 w obu osiach, więc przelotka
+  zwierająca — zakładana przez komentarz przy `ANTENA_KEEPOUT_MM` od początku
+  — nigdy nie miała się gdzie zmieścić. Zwarcie radiatora do masy jest całą
+  zasadą działania odwróconej F; bez niego to kawałek miedzi o nieokreślonej
+  impedancji. Wymiarów samej anteny nie ruszono,
 * **strefę zakazu 15,2 × 5,2 mm pod anteną na wszystkich sześciu warstwach**,
 * **szycie przelotkami pod padami termicznymi** obudów bez nóżek (QFN/SON/DFN)
   leżącymi na masie: `U1` 5×5 = 25 przelotek w padzie 5,50 × 5,50 mm,

@@ -808,6 +808,35 @@ def stitch_thermal_pads(board: pcbnew.BOARD) -> list:
     return wynik, len(stare)
 
 
+def napraw_siec_anteny(board: pcbnew.BOARD) -> int:
+    """Oddaje masie te pady anteny, ktorym `ato build` jej nie przypisal.
+
+    Footprint anteny jest net-tie: trzynascie prostokatow na GND i jeden
+    pad zasilania na ANT, wszystkie o numerze "2" poza zasilaniem. Przy
+    dokladaniu pada ladowania pod zwieraczem okazalo sie, ze po
+    przebudowie jeden z nich zostaje BEZ SIECI - i wtedy zwiera sie
+    z kazda sasiednia miedzia, bo DRC traktuje brak sieci jako osobna
+    siec. Na plytce wygladalo to na trzy zwarcia z +3V3.
+
+    Tu nie ma co zgadywac: w tym footprincie wszystko poza padem ANT jest
+    masa z definicji - radiator odwroconej F jest zwarty do masy przez
+    zwieracz, stad w ogole net tie. Pad bez sieci dostaje wiec GND.
+    """
+    ant = next((f for f in board.GetFootprints()
+                if ANTENA_FP in str(f.GetFPIDAsString())), None)
+    if ant is None:
+        return 0
+    gnd = board.FindNet("GND")
+    if gnd is None:
+        return 0
+    n = 0
+    for pad in ant.Pads():
+        if not pad.GetNetname():
+            pad.SetNet(gnd)
+            n += 1
+    return n
+
+
 def draw_antenna_keepout(board: pcbnew.BOARD) -> tuple | None:
     """Strefa zakazu wylewki pod antena - na WSZYSTKICH warstwach miedzi.
 
@@ -1496,6 +1525,7 @@ def main() -> None:
     # PO obrysie: wylewka bierze swoj zarys z krawedzi laminatu.
     set_zones(board, w, h)
     # PO wylewkach: strefa zakazu ma je przycinac, a nie odwrotnie.
+    bez_sieci = napraw_siec_anteny(board)
     antena = draw_antenna_keepout(board)
     # PO strefach: przelotki maja byc ostatnia rzecza dokladana
     # do miedzi, zeby kasowanie poprzedniej siatki nie kolidowalo
@@ -1533,6 +1563,8 @@ def main() -> None:
               f"wysrodkowana na punkcie zasilania ({x:.2f}, {y:.2f})")
     else:
         print("UWAGA: nie znalazlem footprintu anteny - strefy zakazu NIE MA")
+    if bez_sieci:
+        print(f"antena: {bez_sieci} padow bylo bez sieci - przypisane do GND")
     for ref, ile, w, h, kolizje in szycie:
         blok = f", {kolizje} miejsc zablokowanych cudza miedzia" if kolizje else ""
         print(f"szycie {ref}: {ile} przelotek {PAD_VIA_DIA_MM}/"

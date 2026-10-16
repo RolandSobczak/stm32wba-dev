@@ -11,6 +11,32 @@ component Antenna_IFA_2G4_package:
     zwykla antena 50-omowa i dziala z dowolnym nadajnikiem 2,4 GHz -
     u nas z wyjsciem `MLPF-WB55-01E3`.
 
+    Pad ladowania pod zwieraczem
+    ----------------------------
+    Do geometrii z Table 1 dolozony jest JEDEN prostokat, ktorego w nocie
+    nie ma: **1,10 x 1,10 mm pod stopa zwieracza** (lokalnie -2,10 / +0,75).
+    Nie jest czescia struktury rezonansowej - lezy ponizej strefy zakazu,
+    czyli juz w obszarze masy, i tylko poszerza miejsce, w ktorym zwieracz
+    spotyka sie z plaszczyzna.
+
+    Bez niego antena **nie dziala wcale**, i to nie jest przesada: stopa
+    zwieracza z noty ma 0,90 x 0,50 mm, a przelotka 0,5 mm z odstepem
+    0,15 potrzebuje 0,80 mm w obu osiach. Przelotka zwierajaca, ktora
+    komentarz przy `ANTENA_KEEPOUT_MM` zaklada od poczatku, nigdy nie
+    miala sie gdzie zmiescic - i nie byla postawiona. Zwarcie radiatora
+    do masy jest cala zasada dzialania odwroconej F; bez niego to kawalek
+    miedzi o nieokreslonej impedancji.
+
+    Nowy pad daje 0,55 mm od srodka do krawedzi przy wymaganych 0,40.
+
+    Szerokosc wynika z trasowania, nie z zapasu: przy 1,60 mm pad
+    wchodzil w sciezki +3V3 biegnace na lewo od zwieracza.
+
+    **Wymiarow z Table 1 nie ruszono.** Nota ostrzega, ze "small changes
+    of the antenna dimensions may have large impact on the performance",
+    wiec dolozenie miedzi po stronie masy bylo jedyna droga, ktora tego
+    ostrzezenia nie narusza.
+
     **To nie jest element kupowany.** To ksztalt miedzi na warstwie
     gornej, zapisany jako footprint po to, zeby byl wersjonowany razem
     z projektem i zeby dalo sie go sprawdzic maszynowo. Nie ma go

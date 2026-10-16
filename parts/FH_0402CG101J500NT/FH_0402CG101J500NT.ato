@@ -8,7 +8,7 @@ component FH_0402CG101J500NT_package:
 
     # This trait marks this file as auto-generated
     # If you want to manually change it, remove the trait
-    trait is_auto_generated<system="ato_part", source="easyeda:C1546", date="2026-10-16T08:56:44.840248+00:00", checksum="8419c5b4dd50554e201c7b72b293f3fe7ff739deef2ac19f661fbc04f409357b">
+    trait is_auto_generated<system="ato_part", source="easyeda:C1546", date="2026-10-16T10:48:43.827677+00:00", checksum="1e553f6b7c3fae55c898e2f28b065ba62b6a532c18da5f6b42b64e01d09ae0ab">
 
     trait is_atomic_part<manufacturer="FH", partnumber="0402CG101J500NT", footprint="C0402.kicad_mod", symbol="0402CG101J500NT.kicad_sym", model="C0402_L1.0-W0.5-H0.5.step">
     trait has_part_picked::by_supplier<supplier_id="lcsc", supplier_partno="C1546", manufacturer="FH", partno="0402CG101J500NT">

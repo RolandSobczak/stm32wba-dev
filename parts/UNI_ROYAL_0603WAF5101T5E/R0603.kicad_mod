@@ -4,11 +4,11 @@
 	(generator_version "v5")
 	(layer "F.Cu")
 	(tedit "5DC5F6A4")
-	(uuid "4c332663-21e5-4d7c-84b3-2a5f5dc20470")
+	(uuid "c1a0b37f-6edc-46b8-9ba5-e55a9abf1493")
 	(property "Reference" "REF**"
 		(at 0 -4)
 		(layer "F.SilkS")
-		(uuid "d4b22e9a-9b0d-4333-8273-c5d7a7b16d07")
+		(uuid "5092607b-1004-4ca0-8779-219bdf637852")
 		(effects
 			(font
 				(size 1 1)
@@ -19,7 +19,7 @@
 	(property "Value" "R0603"
 		(at 0 4)
 		(layer "F.Fab")
-		(uuid "c29fedcd-fa9f-4eb6-8ec3-a516211430d0")
+		(uuid "5df7c98d-29c7-4f28-86c5-3aa5f882dca8")
 		(effects
 			(font
 				(size 1 1)
@@ -37,7 +37,7 @@
 		)
 		(layer "F.Fab")
 		(locked no)
-		(uuid "bf175992-3eca-4161-9e8e-85e9c18a99cc")
+		(uuid "b0a560b4-4b53-4383-8d68-69a59327a20a")
 	)
 	(fp_line
 		(start 0.43 0.66)
@@ -49,7 +49,7 @@
 		(layer "F.SilkS")
 		(layers "F.SilkS")
 		(locked no)
-		(uuid "0f5669db-823f-41c3-bd30-a6ce22afcf8b")
+		(uuid "4ac2bb66-3022-4242-aa6e-54dbffaf5c31")
 	)
 	(fp_line
 		(start 1.39 0.66)
@@ -61,7 +61,7 @@
 		(layer "F.SilkS")
 		(layers "F.SilkS")
 		(locked no)
-		(uuid "33f58ff2-fade-4384-becc-67d0fd59b575")
+		(uuid "2a2694b3-efe6-4ec3-b8ce-c21b46ee2f4c")
 	)
 	(fp_line
 		(start 1.39 -0.66)
@@ -73,7 +73,7 @@
 		(layer "F.SilkS")
 		(layers "F.SilkS")
 		(locked no)
-		(uuid "3e156d88-f187-4dc7-8479-650707c1d056")
+		(uuid "26187644-92d8-4d7f-942d-f8e221733f1b")
 	)
 	(fp_line
 		(start -0.43 0.66)
@@ -85,7 +85,7 @@
 		(layer "F.SilkS")
 		(layers "F.SilkS")
 		(locked no)
-		(uuid "2f907d3f-7eda-44be-bfaa-1bf2b0785200")
+		(uuid "df5e3f70-b528-4451-8994-766eff3444fa")
 	)
 	(fp_line
 		(start -1.39 0.66)
@@ -97,7 +97,7 @@
 		(layer "F.SilkS")
 		(layers "F.SilkS")
 		(locked no)
-		(uuid "4a64b267-48fb-4cf9-aee5-502e0d15d354")
+		(uuid "2df0f4a0-e626-42a0-b263-2358c4118872")
 	)
 	(fp_line
 		(start -1.39 -0.66)
@@ -109,19 +109,19 @@
 		(layer "F.SilkS")
 		(layers "F.SilkS")
 		(locked no)
-		(uuid "494ca665-277a-48a4-9809-eea662aaa466")
+		(uuid "6ffdff78-a03f-4e0a-94e7-efa28cd24fb2")
 	)
 	(pad "2" smd rect
 		(at 0.75 0 0)
 		(size 0.81 0.86)
 		(layers "F.Cu" "F.Paste" "F.Mask")
-		(uuid "593aa0a8-f617-4170-93a9-d283d7c790ec")
+		(uuid "e758e922-578a-40c3-bf7b-1fbed75e1b9d")
 	)
 	(pad "1" smd rect
 		(at -0.75 0 0)
 		(size 0.81 0.86)
 		(layers "F.Cu" "F.Paste" "F.Mask")
-		(uuid "14e51605-bd14-402a-8150-d95258bc635f")
+		(uuid "09119154-202c-41e8-a8d8-51d1857f1b0a")
 	)
 	(model "${KIPRJMOD}/../../parts/UNI_ROYAL_0603WAF5101T5E/R0603.STEP"
 		(offset
