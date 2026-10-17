@@ -366,7 +366,7 @@ anteny. Skrypt ustawia:
   zabierał miejsce potrzebne elementom, a żaden stary uchwyt nie jest tego
   wart. Najcieńsza obwódka laminatu: 1,90 mm,
 * wylewki masy na F.Cu i B.Cu, płaszczyzny na In1 i In4,
-* klasy sieci — m.in. **RF 0,39 mm** (`RF1`, `ANT`) i **USB 0,28 mm**
+* klasy sieci — m.in. **RF 0,39 mm przy odstępie 0,15** (`RF1`, `ANT`) i **USB 0,28 mm**
   (`USB_D_P`/`USB_D_N` przy procesorze, `USB_CONN_P`/`USB_CONN_N` przy
   gnieździe — przyrostki `_P`/`_N` są warunkiem, żeby KiCad w ogóle
   rozpoznał parę różnicową),

@@ -196,7 +196,15 @@ STITCH_MARGIN_MM = 0.25                  # od krawedzi przelotki do krawedzi pad
 # wolne pole 2,70 mm, czyli WIECEJ niz raster - kregi nachodza na siebie
 # i plaszczyzna zostaje przecieta na wylot przez caly rzad. Przy 0,2 mm
 # wolne pole ma 2,10 mm i miedzy pinami zostaje mostek 0,44 mm.
-ZONE_CLEARANCE_MM = 0.2
+#
+# Bylo 0,2 mm, jest 0,15 - tyle, ile wynosi `CLEARANCE_MM` calej plytki.
+# Wylewka ustawiona na wiecej niz reguly projektu cofa sie bardziej, niz
+# musi, i rozdrabnia sie na wyspy; przy 0,2 bylo ich na F.Cu siedemdziesiat.
+#
+# **Nizej zejsc nie wolno i nie ma po co.** Minimum JLCPCB to 0,127 mm,
+# a KiCad i tak bierze WIEKSZY z dwoch odstepow - klasy sieci i strefy -
+# wiec ponizej 0,15 ustawienie jest martwe, bo wygrywa `CLEARANCE_MM`.
+ZONE_CLEARANCE_MM = 0.15
 
 # ─── Geometria laminatu ──────────────────────────────────────────────────
 #
@@ -384,7 +392,12 @@ NETCLASSES = [
     # dlugosc fali w laminacie to ok. 69 mm, wiec kazdy milimetr toru to
     # 1/69 fali. Dlatego MLPF ma stac przy procesorze, a antena przy MLPF -
     # i dlatego AN5165 par. 7 konczy sie uwaga, zeby ten odcinek skracac.
-    ("RF", 0.39, 0.5, 0.3, 0.3, ["RF1", "ANT"], {"pcb_color": "rgba(80, 190, 120, 1.000)"}),
+    # Odstep 0,15, a nie 0,30 jak pierwotnie. Przy procesorze tor RF
+    # przechodzi miedzy wyprowadzeniami 19-24 w rastrze 0,5 mm i tam nie
+    # ma go jak odsunac - 0,30 bylo zyczeniem, nie wymiarem. 0,15 to
+    # jednoczesnie `CLEARANCE_MM` calej plytki i wartosc powyzej minimum
+    # JLCPCB (0,127), wiec nie podnosi ceny ani nie lamie regul.
+    ("RF", 0.39, 0.5, 0.3, 0.15, ["RF1", "ANT"], {"pcb_color": "rgba(80, 190, 120, 1.000)"}),
     # Para roznicowa USB 2.0. 0,28 mm przy odstepie 0,15 mm daje 90 omow
     # roznicowo nad plaszczyzna In1 przy stosie wyzej (wymog USB: 90 omow
     # +/-15%, czyli 76,5..103,5).
@@ -1132,12 +1145,25 @@ def set_zones(board: pcbnew.BOARD, w: float, h: float) -> None:
         Ta plytka jest lutowana recznie, a lity pad masy na nozce listwy
         THT odprowadza cieplo szybciej, niz grot je dostarcza.
         """
-        if int(z.GetPadConnection()) == int(pcbnew.ZONE_CONNECTION_THT_THERMAL):
-            return False
-        z.SetPadConnection(pcbnew.ZONE_CONNECTION_THT_THERMAL)
-        z.SetThermalReliefGap(mm(ZONE_CLEARANCE_MM))
-        z.SetThermalReliefSpokeWidth(mm(ZONE_CLEARANCE_MM))
-        return True
+        zmiany = []
+        if int(z.GetPadConnection()) != int(pcbnew.ZONE_CONNECTION_THT_THERMAL):
+            z.SetPadConnection(pcbnew.ZONE_CONNECTION_THT_THERMAL)
+            zmiany.append("pady -> THT_THERMAL")
+
+        # Odstep tez trzeba WYMUSIC, nie tylko nadac nowym strefom.
+        # Zastane wylewki trzymaly swoje wlasne wartosci: 0,200 mm na
+        # masie i zasilaniu, a na SYS i VBUS **0,100 mm**, czyli ponizej
+        # minimum JLCPCB (0,127). Recznie zmieniona wartosc w KiCadzie
+        # zostawala w strefie i zyla wlasnym zyciem obok stalej w tym
+        # pliku - dokladnie ta sama luka, co przy trybie laczenia padow.
+        docelowy = mm(ZONE_CLEARANCE_MM)
+        if z.GetLocalClearance() != docelowy:
+            zmiany.append(f"odstep {pcbnew.ToMM(z.GetLocalClearance()):.3f}"
+                          f" -> {ZONE_CLEARANCE_MM}")
+            z.SetLocalClearance(docelowy)
+        z.SetThermalReliefGap(docelowy)
+        z.SetThermalReliefSpokeWidth(docelowy)
+        return ", ".join(zmiany) if zmiany else False
 
     def zgubiona(nazwa: str) -> bool:
         """Czy ta nazwa sieci jest smieciem po przenumerowaniu.
@@ -1200,8 +1226,9 @@ def set_zones(board: pcbnew.BOARD, w: float, h: float) -> None:
                 ruchy.append(f"{z.GetZoneName() or 'strefa zakazu'} -> "
                              f"{len(miedz)} warstw miedzi")
             continue
-        if ustaw_laczenie(z):
-            ruchy.append(f"{z.GetNetname() or 'wylewka'}: pady -> THT_THERMAL")
+        opis = ustaw_laczenie(z)
+        if opis:
+            ruchy.append(f"{z.GetNetname() or 'wylewka'}: {opis}")
         warstwy = list(z.GetLayerSet().Seq())
         if len(warstwy) == 1 and warstwy[0] in zewnetrzne:
             # Na F.Cu stoja tez wylewki SYS i VBUS, wiec NIE wolno tu
