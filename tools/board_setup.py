@@ -325,6 +325,29 @@ WYLEWKI_ZEWNETRZNE = {"F.Cu": "GND", "B.Cu": "GND"}
 # Zarys nowo tworzonej wylewki: laminat wciety o tyle z kazdej strony.
 WYLEWKA_WCIECIE_MM = 0.5
 
+# Pady, ktore maja byc wlane w wylewke LITO, mimo ze cala strefa stoi na
+# odsprzeganiu termicznym.
+#
+#   oznaczenie -> nazwy padow
+#
+# Wylewki trzymaja `THT_THERMAL`, bo plytka jest lutowana recznie i lity
+# pad masy na nozce listwy odprowadza cieplo szybciej, niz grot je
+# dostarcza. Nozki ekranu gniazda USB sa wyjatkiem i to z dwoch powodow:
+# maja 0,9 mm szerokosci, wiec przy odstepie 0,15 mm nie ma na nich
+# miejsca na dwie szprychy (DRC zglasza `starved_thermal` - jedna
+# szprycha zamiast dwoch), a ekran gniazda nie jest sygnalem do pomiaru,
+# tylko mase ma trzymac krotko i szeroko. Lutuje sie je grubym grotem
+# niezaleznie od wylewki.
+PADY_LITE = {"USB1": ("S1",)}
+
+# Zapas wokol miedzi wlasnej sieci przy ZACIESNIANIU wylewki lokalnej.
+#
+# Wylewka lokalna (SYS, VBUS pod torem zasilania) ma obejmowac swoj blok
+# i nic wiecej. Zapas musi byc wiekszy od odstepu wylewki, bo inaczej
+# brzeg zarysu przecinalby wlasne pady; 1,5 mm daje przy 0,15 mm odstepu
+# dziesieciokrotna rezerwe i nadal trzyma wylewke przy jej ukladzie.
+WYLEWKA_LOKALNA_ZAPAS_MM = 1.5
+
 # ─── Klasy sieci ───
 #
 #   nazwa, sciezka, srednica przelotki, wiertlo, odstep, sieci, dodatki
@@ -1218,6 +1241,46 @@ def zarys_wylewki(board: pcbnew.BOARD) -> pcbnew.VECTOR_VECTOR2I:
     return pts
 
 
+def prostokat(bb: pcbnew.BOX2I) -> pcbnew.VECTOR_VECTOR2I:
+    """Pudelko jako lista czterech wierzcholkow dla `ZONE.AddPolygon`."""
+    pts = pcbnew.VECTOR_VECTOR2I()
+    for x, y in ((bb.GetLeft(), bb.GetTop()), (bb.GetRight(), bb.GetTop()),
+                 (bb.GetRight(), bb.GetBottom()), (bb.GetLeft(), bb.GetBottom())):
+        pts.append(pcbnew.VECTOR2I(x, y))
+    return pts
+
+
+def zarys_lokalny(board: pcbnew.BOARD, siec: str):
+    """Pudelko obejmujace CALA miedz danej sieci, z zapasem.
+
+    Zwraca `None`, gdy siec nie ma na plytce ani jednego padu i sladu -
+    wtedy nie ma z czego liczyc i decyzje podejmuje wolajacy.
+
+    Liczone jest po padach, sladach I przelotkach, nie po samych padach,
+    i to nie jest nadmiar ostroznosci. Wylewka VBUS na tej plytce byla
+    NOSNA: pad 1 ukladu U4 dochodzil do sladu na B.Cu wylacznie przez
+    przelotke siedzaca w tej wylewce, a pad A9 gniazda USB przez nia
+    siegal sladu 4,2 mm dalej. Zarys policzony z samych padow odciąłby
+    jedno i drugie - sprawdzone, dawalo dwa niepolaczenia i wiszaca
+    przelotke.
+    """
+    bb = pcbnew.BOX2I()
+    pusto = True
+    for f in board.GetFootprints():
+        for pad in f.Pads():
+            if pad.GetNetname() == siec:
+                bb.Merge(pad.GetBoundingBox())
+                pusto = False
+    for t in board.GetTracks():
+        if t.GetNetname() == siec:
+            bb.Merge(t.GetBoundingBox())
+            pusto = False
+    if pusto:
+        return None
+    bb.Inflate(mm(WYLEWKA_LOKALNA_ZAPAS_MM))
+    return bb
+
+
 def nowa_wylewka(board: pcbnew.BOARD, warstwa: int, siec) -> pcbnew.ZONE:
     """Wylewka na calej plytce: laminat wciety o WYLEWKA_WCIECIE_MM.
 
@@ -1239,6 +1302,27 @@ def nowa_wylewka(board: pcbnew.BOARD, warstwa: int, siec) -> pcbnew.ZONE:
     z.AddPolygon(zarys_wylewki(board))
     board.Add(z)
     return z
+
+
+def ustaw_pady_lite(board: pcbnew.BOARD) -> int:
+    """Wymusza lite polaczenie z wylewka na padach z PADY_LITE.
+
+    Zwraca liczbe zmienionych padow. `-1` w `GetLocalZoneConnection`
+    znaczy "dziedzicz po strefie", wiec tylko to warto nadpisywac.
+    """
+    zmienione = 0
+    for f in board.GetFootprints():
+        nazwy = PADY_LITE.get(f.GetReference())
+        if not nazwy:
+            continue
+        for pad in f.Pads():
+            if pad.GetPadName() not in nazwy:
+                continue
+            if int(pad.GetLocalZoneConnection()) == int(pcbnew.ZONE_CONNECTION_FULL):
+                continue
+            pad.SetLocalZoneConnection(pcbnew.ZONE_CONNECTION_FULL)
+            zmienione += 1
+    return zmienione
 
 
 def set_zones(board: pcbnew.BOARD, w: float, h: float) -> None:
@@ -1379,24 +1463,67 @@ def set_zones(board: pcbnew.BOARD, w: float, h: float) -> None:
             ruchy.append(f"{z.GetNetname() or 'wylewka'}: {opis}")
         warstwy = list(z.GetLayerSet().Seq())
         if len(warstwy) == 1 and warstwy[0] in zewnetrzne:
-            # Na F.Cu stoja tez wylewki SYS i VBUS, wiec NIE wolno tu
-            # niczego wymuszac - tylko naprawiac to, co wyraznie zgubilo
-            # tozsamosc. Zdrowa wylewka SYS zostaje wylewka SYS.
+            # Na F.Cu stoja DWA rodzaje wylewek i rozni je nie wyglad,
+            # tylko siec: ta z WYLEWKI_ZEWNETRZNE (masa) nalezy do calej
+            # warstwy, a kazda inna (SYS, VBUS) to wylewka LOKALNA pod
+            # jednym blokiem. Dopoki tego nie rozrozniano, obie szly
+            # przez te sama regule i konczylo sie to tak:
+            #
+            #   wylewka VBUS na F.Cu  906 mm2 (46 % warstwy), priorytet 2
+            #   wylewka GND  na F.Cu  157 mm2 w 55 kawalkach, priorytet 0
+            #
+            # czyli 5 V zamiast masy wokol wszystkiego, w tym 102 mm2
+            # w pasku przy antenie (masy zostawalo tam 7 mm2). Antena
+            # inverted-F ma odczep zwarty do masy i to plaszczyzna masy
+            # jest jej przeciwwaga, wiec to nie kosmetyka.
             if zgubiona(z.GetNetname()):
                 przywroc_siec(z, warstwy[0])
-            zastane[warstwy[0]] = z
-            # Zarysow co do zasady nie ruszamy - autorouter potrafi oddac
-            # lepszy niz prostokat. Ale zarys mniejszy niz cwierc plytki
-            # nie jest wyborem trasera, tylko pozostaloscia po tworzeniu
-            # strefy bez obrysu. Taki prostujemy i mowimy o tym glosno.
+            siec_warstwy = WYLEWKI_ZEWNETRZNE.get(pcbnew.LayerName(warstwy[0]))
+            nazwa_w = board.GetLayerName(warstwy[0])
             zb = z.Outline().BBox()
-            if zb.GetWidth() * zb.GetHeight() < pole_plytki // 4:
+            if z.GetNetname() == siec_warstwy:
+                zastane[warstwy[0]] = z
+                # Wylewka warstwy ma lezec NAJNIZEJ, inaczej zabiera
+                # lokalnym ich wlasny placek.
+                if z.GetAssignedPriority() != 0:
+                    ruchy.append(f"{z.GetNetname()} na {nazwa_w}: priorytet "
+                                 f"{z.GetAssignedPriority()} -> 0")
+                    z.SetAssignedPriority(0)
+                # Zarysow co do zasady nie ruszamy - autorouter potrafi
+                # oddac lepszy niz prostokat. Ale zarys mniejszy niz
+                # cwierc plytki nie jest wyborem trasera, tylko
+                # pozostaloscia po tworzeniu strefy bez obrysu.
+                if zb.GetWidth() * zb.GetHeight() < pole_plytki // 4:
+                    z.Outline().RemoveAllContours()
+                    z.AddPolygon(zarys_wylewki(board))
+                    ruchy.append(
+                        f"{z.GetNetname()} na {nazwa_w}: zarys byl "
+                        f"{pcbnew.ToMM(zb.GetWidth()):.1f} x "
+                        f"{pcbnew.ToMM(zb.GetHeight()):.1f} mm, WYPROSTOWANY")
+                continue
+            # Wylewka lokalna. Jej zarys ma obejmowac miedz WLASNEJ sieci
+            # i nic wiecej - prostowanie do calej plytki jest tu dokladnie
+            # bledem, nie naprawa.
+            if z.GetAssignedPriority() < 1:
+                ruchy.append(f"{z.GetNetname()} na {nazwa_w}: priorytet "
+                             f"{z.GetAssignedPriority()} -> 1 (lokalna)")
+                z.SetAssignedPriority(1)
+            zarys = zarys_lokalny(board, z.GetNetname())
+            if zarys is None:
+                raise SystemExit(
+                    f"wylewka {z.GetNetname()!r} na {nazwa_w} nie ma na "
+                    f"plytce ANI JEDNEGO padu i sladu tej sieci - nie ma "
+                    f"z czego policzyc jej zarysu")
+            lb, cel = zb, zarys
+            if lb.GetWidth() > cel.GetWidth() or lb.GetHeight() > cel.GetHeight():
                 z.Outline().RemoveAllContours()
-                z.AddPolygon(zarys_wylewki(board))
+                z.AddPolygon(prostokat(cel))
                 ruchy.append(
-                    f"{z.GetNetname()} na {board.GetLayerName(warstwy[0])}: "
-                    f"zarys byl {pcbnew.ToMM(zb.GetWidth()):.1f} x "
-                    f"{pcbnew.ToMM(zb.GetHeight()):.1f} mm, WYPROSTOWANY")
+                    f"{z.GetNetname()} na {nazwa_w}: zarys "
+                    f"{pcbnew.ToMM(lb.GetWidth()):.1f} x "
+                    f"{pcbnew.ToMM(lb.GetHeight()):.1f} -> "
+                    f"{pcbnew.ToMM(cel.GetWidth()):.1f} x "
+                    f"{pcbnew.ToMM(cel.GetHeight()):.1f} mm, ZACIESNIONY")
             continue
         siec = z.GetNetname()
         # Warstwa wewnetrzna niesie DOKLADNIE jedna plaszczyzne, wiec
@@ -1703,6 +1830,9 @@ def main() -> None:
     draw_outline(board, w, h, CORNER_R_MM, [], BOARD_X_MM, BOARD_Y_MM)
     otwory = draw_mounting_holes(board, w, h, CORNER_R_MM,
                                  BOARD_X_MM, BOARD_Y_MM)
+    # PRZED wylewkami: strefa liczy szprychy przy wylewaniu, wiec pad
+    # musi juz wtedy wiedziec, ze ma byc wlany lito.
+    lite = ustaw_pady_lite(board)
     # PO obrysie: wylewka bierze swoj zarys z krawedzi laminatu.
     set_zones(board, w, h)
     # PO wylewkach: strefa zakazu ma je przycinac, a nie odwrotnie.
@@ -1758,6 +1888,9 @@ def main() -> None:
               + (f" (skasowano {skasowane} starych)" if skasowane else ""))
     print(f"wylewki: {'wylane' if wylane else 'NIE UDALO SIE WYLAC'} "
           f"({len([z for z in board.Zones() if not z.GetIsRuleArea()])} stref)")
+    if lite:
+        print(f"pady lite: {lite} - "
+              + ", ".join(f"{r} {'/'.join(n)}" for r, n in PADY_LITE.items()))
     if zwieracz:
         print(f"przelotka zwierajaca anteny: ({zwieracz[0]:.2f}, {zwieracz[1]:.2f})"
               f" - radiator zwarty do plaszczyzny masy")
