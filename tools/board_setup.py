@@ -325,6 +325,13 @@ WYLEWKI_ZEWNETRZNE = {"F.Cu": "GND", "B.Cu": "GND"}
 # Zarys nowo tworzonej wylewki: laminat wciety o tyle z kazdej strony.
 WYLEWKA_WCIECIE_MM = 0.5
 
+# Oznaczenia, ktorych sitodruk ma byc pusty: pelny wzorzec oznaczenia.
+#
+# `^[RC]\d+$` to rezystory i kondensatory. Zapis jest wzorcem, a nie
+# lista prefiksow, zeby nie zlapac `RF1` ani `CN1` - oba zaczynaja sie
+# na wlasciwa litere, a biernikami nie sa.
+SITODRUK_BEZ = r"^[RC]\d+$"
+
 # Pady, ktore maja byc wlane w wylewke LITO, mimo ze cala strefa stoi na
 # odsprzeganiu termicznym.
 #
@@ -364,17 +371,39 @@ WYLEWKA_LOKALNA_ZAPAS_MM = 1.5
 DEFAULT_TRACK_MM = 0.2   # sygnaly: dwa razy grubiej niz minimum procesu
 
 NETCLASSES = [
-    # Tor zasilania. 0,5 mm przy miedzi 35 um to ok. 1,4 A przy przyroscie
-    # 10 stopni (IPC-2221, warstwa zewnetrzna) - z zapasem ponad wszystko,
-    # co ta plytka pobiera. Przelotki 0,8/0,4, zeby przejscie na plaszczyzne
-    # nie bylo wezszym gardlem niz sciezka.
+    # Tor zasilania, 1,0 mm. Wczesniej stalo tu 0,5 mm z uzasadnieniem
+    # "ok. 1,4 A przy przyroscie 10 stopni, z zapasem ponad wszystko, co ta
+    # plytka pobiera" - i to bylo po prostu nieprawda. ILIM ladowarki jest
+    # ustawiony rezystorem 121 R na ~2,9 A, a firmware moze podniesc IINLIM
+    # do 3 A, wiec torem ogniwa plynie do 3 A. Dla 0,5 mm przy miedzi 35 um
+    # IPC-2221 daje przy 3 A przyrost **55 stopni**, dla 1,0 mm - 17.
+    #
+    # Liczby zmierzone na tej plytce przed i po poszerzeniu:
+    #
+    #     VBAT      11,5 -> 6,5 mOhm
+    #     VBAT_CHG  19,6 -> 9,6 mOhm
+    #     razem     31,1 -> 16,1 mOhm, spadek przy 3 A 93 -> 48 mV
+    #
+    # Spadek nie jest tu kosmetyka: zjada zapas przed progiem VINDPM, wiec
+    # BQ25896 dlawi prad wejsciowy wczesniej, niz powinien - waska miedz
+    # nie spali plytki, tylko odbierze jej prad ladowania. Drugi skutek:
+    # dwa milimetry od toru siedzi termistor TS, ktory ma mierzyc
+    # temperature OGNIWA, a nie grzanie sie miedzi.
+    #
+    # Przelotki 1,0/0,5. Barylka 0,4 mm przy 25 um plateru ma 0,0314 mm2,
+    # czyli tyle, co slad 0,90 mm - przy sciezce 0,5 mm nie przeszkadzala,
+    # przy 1,0 mm stawala sie najwezszym punktem. Odnogi bez pradu (odczepy
+    # Kelvina do gaugea) moga zostac mniejsze i nie jest to naruszenie:
+    # `min_via_diameter` to osobna regula plytki.
+    #
     # Odstep 0,15 mm, czyli minimum procesu, a nie 0,2 jak w Switch.
     # Powod jest konkretny: gniazdo USB-C ma wlasny raster padow 0,84 mm
     # przy padach 0,65 mm, czyli 0,19 mm miedzy VBUS a sasiednim pinem.
     # Zadna decyzja trasowania tego nie zmieni, a 0,2 mm w klasie kazaloby
     # DRC zglaszac wnetrze gniazda jako blad. Sieci zasilania sa
-    # niskoimpedancyjne i nie potrzebuja zapasu odstepu.
-    ("Power", 0.5, 0.8, 0.4, 0.15,
+    # niskoimpedancyjne i nie potrzebuja zapasu odstepu. JLCPCB zrobi na
+    # 6 warstwach 0,09 mm, wiec 0,15 to i tak 0,06 mm zapasu na uzysk.
+    ("Power", 1.0, 1.0, 0.5, 0.15,
      ["VBUS", "VBAT", "VBAT_CHG", "SYS", "PMID"],
      {"pcb_color": "rgba(220, 70, 70, 1.000)"}),
     # GND i +3V3 wyszly z klasy Power i to nie jest kosmetyka.
@@ -856,6 +885,75 @@ def stitch_thermal_pads(board: pcbnew.BOARD) -> list:
         print(f"  UWAGA: {ref} pad {nazwa_padu} ma obrys {w:.2f} x {h:.2f} mm - "
               f"za maly na pad termiczny; NIE SZYTY")
     return wynik, len(stare)
+
+
+def sitodruk_na_fab(board: pcbnew.BOARD) -> tuple[int, int, int]:
+    """Zdejmuje z sitodruku oznaczenia i obrysy biernikow.
+
+    Po co
+    -----
+    56 biernikow tej plytki wnosi na sitodruk **468 z 683** elementow
+    graficznych, i to one, a nie napisy, sa zrodlem natloku: z 244
+    ostrzezen sitodruku 158 to pary "obrys na obrys", bo obudowy 0402
+    i 0603 stoja ciasniej, niz ich obrysy sa szerokie. Przy montazu
+    recznym z otwartym KiCadem nadruk na laminacie nie jest do niczego
+    potrzebny - element i tak sie znajduje po ekranie.
+
+    Dlaczego PRZENIESIENIE, a nie usuniecie
+    ---------------------------------------
+    Grafika ladunku na `*.Fab` dalej widac w pcbnew, wiec przy lutowaniu
+    nie tracisz ani obrysu obudowy, ani oznaczenia - tracisz je tylko na
+    gerberze sitodruku, czyli dokladnie tam, gdzie przeszkadzaly.
+    Dodatkowo: krok jest odwracalny jedna stala i **idempotentny**, a
+    kasowanie elementow footprintu wchodzi w te same usterki bindingow
+    KiCada 9, ktore `clean_copper.py` opisuje przy `Remove`.
+
+    Dlaczego w skrypcie, a nie reka
+    -------------------------------
+    Z tego samego powodu, co `ustaw_sitodruk` ponizej: `ato build`
+    odtwarza footprinty z bibliotek i kazda reczna zmiana warstwy znika
+    przy przebudowie.
+
+    Czego to NIE dotyczy
+    -------------------
+    Wzorzec lapie tylko `R<cyfry>` i `C<cyfry>`. Uklady, zlacza, kwarce,
+    diody, cewki, antena i pady pomiarowe zostaja na sitodruku - przy
+    nich oznaczenie na laminacie ma sens, bo podpowiada orientacje.
+    Sprawdzone przed wlaczeniem: zaden biernik na tej plytce nie jest
+    spolaryzowany (same MLCC i rezystory), wiec nie ma tu znacznika
+    polaryzacji, ktory wolno zgubic. Gdyby kiedys doszedl tantal albo
+    elektrolit, trzeba go z tego wzorca WYLACZYC.
+    """
+    para = {pcbnew.F_SilkS: pcbnew.F_Fab, pcbnew.B_SilkS: pcbnew.B_Fab}
+    wzor = re.compile(SITODRUK_BEZ)
+    footprintow = oznaczen = grafiki = 0
+    for fp in board.GetFootprints():
+        if not wzor.match(fp.GetReference()):
+            continue
+        ruszone = False
+        for txt in (fp.Reference(), fp.Value()):
+            cel = para.get(txt.GetLayer())
+            if cel is not None:
+                txt.SetLayer(cel)
+                oznaczen += 1
+                ruszone = True
+        # Lista robiona NA ZAPAS, przed zmianami. `GraphicalItems()` oddaje
+        # widok na kontener footprintu, a modyfikowanie elementu w trakcie
+        # iteracji po nim konczy sie w KiCadzie 9 golym `SwigPyObject`.
+        grafy = list(fp.GraphicalItems())
+        for g in grafy:
+            try:
+                cel = para.get(g.GetLayer())
+            except AttributeError:
+                continue
+            if cel is None:
+                continue
+            g.SetLayer(cel)
+            grafiki += 1
+            ruszone = True
+        if ruszone:
+            footprintow += 1
+    return footprintow, oznaczen, grafiki
 
 
 def ustaw_sitodruk(board: pcbnew.BOARD) -> tuple[int, int]:
@@ -1845,6 +1943,9 @@ def main() -> None:
     # PO szyciu: gdyby kiedys pad zwieracza trafil w rodzine szytych
     # obudow, kasowanie starej siatki zabraloby te przelotke razem z nia.
     zwieracz = przelotka_zwierajaca(board)
+    # PRZED `ustaw_sitodruk`: ten krok zdejmuje czesc napisow z sitodruku,
+    # a tamten ma rozmiarowac tylko to, co na sitodruku zostalo.
+    bez_silk = sitodruk_na_fab(board)
     sitodruk = ustaw_sitodruk(board)
     za_cienkie = sprawdz_przelotki(board)
 
@@ -1891,6 +1992,11 @@ def main() -> None:
     if lite:
         print(f"pady lite: {lite} - "
               + ", ".join(f"{r} {'/'.join(n)}" for r, n in PADY_LITE.items()))
+    fp_bez, ozn_bez, graf_bez = bez_silk
+    if fp_bez:
+        print(f"sitodruk biernikow -> *.Fab: {fp_bez} footprintow "
+              f"({ozn_bez} napisow, {graf_bez} elementow grafiki), "
+              f"wzorzec {SITODRUK_BEZ}")
     if zwieracz:
         print(f"przelotka zwierajaca anteny: ({zwieracz[0]:.2f}, {zwieracz[1]:.2f})"
               f" - radiator zwarty do plaszczyzny masy")

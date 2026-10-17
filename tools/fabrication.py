@@ -319,7 +319,13 @@ def main() -> None:
     (out / "gerbers").mkdir(parents=True)
 
     board = pcbnew.LoadBoard(str(PCB))
+    # `--subtract-soldermask` obcina sitodruk tam, gdzie maska jest otwarta,
+    # czyli nad padami. Robia to tak czy inaczej na produkcji, ale po
+    # naszej stronie daje to gerber pokazujacy DOKLADNIE to, co sie
+    # wydrukuje - zamiast liczyc na DFM producenta. Nie zmienia licznika
+    # ostrzezen DRC: tamto liczy na plytce, nie na gerberze.
     run("pcb", "export", "gerbers", "--layers", gerber_layers(board),
+        "--subtract-soldermask",
         "--no-protel-ext", "-o", str(out / "gerbers") + "/", str(PCB))
     run("pcb", "export", "drill", "--format", "excellon",
         "--excellon-separate-th", "-o", str(out / "gerbers") + "/", str(PCB))
