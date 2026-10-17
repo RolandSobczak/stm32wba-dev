@@ -19,8 +19,10 @@ w ogole potrzebne.
 Powstaje:
 
     gerbers.zip              gerbery + wiercenia, spakowane pod JLCPCB
-    bom_jlcpcb.csv           lista czesci do montazu
-    cpl_jlcpcb.csv           pozycje elementow do montazu
+    bom_zakupy.csv           WSZYSTKO z numerem LCSC - lista zakupow
+    bom_montaz_jlc.csv       zawezone: co JLCPCB ma zmontowac
+    cpl_montaz_jlc.csv       pozycje tych samych czesci
+    cpl_wszystko.csv         pozycje wszystkich czesci z LCSC
     plytka.pdf               warstwy miedzi i opisu do ogladania
     plytka.step              model 3D do mechaniki
     montaz_recznie.csv       czesci BEZ numeru LCSC - do wlutowania samemu
@@ -57,6 +59,37 @@ LCSC_RE = re.compile(r"C\d+")
 
 def jlc_part(p: dict) -> bool:
     return bool(LCSC_RE.fullmatch(p["lcsc"]))
+
+
+# ─── Co zamawiamy w montazu, a co lutujemy sami ──────────────────────────
+#
+# JLCPCB montuje TYLKO to, czego nie da sie sensownie polutowac grotem:
+#
+#   * obudowy **leadless** - QFN, SON, DFN, LGA. Nie maja nozek, tylko
+#     pady pod spodem; bez szablonu i goracego powietrza nie ma do nich
+#     dostepu, a pod procesorem jest jeszcze pad termiczny z 22 przelotkami;
+#   * `FL1` - filtr MLPF ma szesc padow w rastrze 0,50 mm na obudowie
+#     1,6 x 1,0 mm i siedzi w torze RF, gdzie zimny lut widac dopiero
+#     jako brak zasiegu;
+#   * kwarce - NX2016SA ma 2,0 x 1,6 mm i cztery pady pod spodem, a zle
+#     polutowany rezonator nie jest "troche gorszy", tylko nie startuje.
+#
+# Reszta - rezystory, kondensatory, diody, przyciski, zlacza - idzie
+# recznie. Przy 0603 i wiekszych to kwadrans roboty, a kazda pozycja
+# w montazu JLCPCB to osobna oplata za podajnik.
+LEADLESS = ("QFN", "SON", "DFN", "LGA")
+MONTAZ_WPROST = ("FL1",)
+MONTAZ_FOOTPRINT = ("CRYSTAL",)
+
+
+def do_montazu(p: dict) -> bool:
+    """Czy ta czesc idzie do montazu w JLCPCB."""
+    if not jlc_part(p):
+        return False
+    if p["ref"] in MONTAZ_WPROST:
+        return True
+    fp = p["footprint"].split(":")[-1].upper()
+    return any(k in fp for k in LEADLESS + MONTAZ_FOOTPRINT)
 
 
 def comment(p: dict) -> str:
@@ -170,7 +203,16 @@ def board_parts(board: pcbnew.BOARD) -> list[dict]:
 
 
 def write_bom(parts: list[dict], out: Path) -> tuple[int, int]:
-    """BOM w formacie JLCPCB, elementy zgrupowane po numerze LCSC."""
+    """Lista zakupow: WSZYSTKO z numerem LCSC, z iloscia na plytke.
+
+    To nie jest plik do wgrania w zamowienie montazu - od tego jest
+    `bom_montaz_jlc.csv`. Ten ma pomoc przy kupowaniu, wiec ma kolumne
+    `Ilosc`: bez niej zamawianie z zapasem sprowadza sie do liczenia
+    przecinkow w liscie oznaczen.
+
+    Sa tu takze czesci, ktore lutujemy sami - kupuje sie je w tym samym
+    zamowieniu, niezaleznie od tego, kto je potem przylutuje.
+    """
     groups: dict[tuple, list[str]] = defaultdict(list)
     for p in parts:
         if not jlc_part(p):
@@ -178,10 +220,13 @@ def write_bom(parts: list[dict], out: Path) -> tuple[int, int]:
         groups[(comment(p), p["footprint"], p["lcsc"])].append(p["ref"])
     with out.open("w", newline="", encoding="utf8") as fh:
         w = csv.writer(fh)
-        w.writerow(["Comment", "Designator", "Footprint", "LCSC Part #"])
+        w.writerow(["Comment", "Designator", "Ilosc", "Footprint",
+                    "LCSC Part #", "Montaz"])
         for (value, fp, lcsc), refs in sorted(groups.items(),
                                               key=lambda kv: kv[0][2]):
-            w.writerow([value, ",".join(refs), fp, lcsc])
+            gdzie = "JLC" if any(do_montazu(p) for p in parts
+                                 if p["ref"] in refs) else "recznie"
+            w.writerow([value, ",".join(refs), len(refs), fp, lcsc, gdzie])
     return len(groups), sum(len(r) for r in groups.values())
 
 
@@ -229,6 +274,41 @@ def write_manual(parts: list[dict], out: Path) -> int:
     return len(rows)
 
 
+def write_bom_montaz(parts: list[dict], out: Path) -> tuple[int, int]:
+    """BOM dla JLCPCB zawezony do czesci, ktore faktycznie montuja."""
+    groups: dict[tuple, list[str]] = defaultdict(list)
+    for p in parts:
+        if not do_montazu(p):
+            continue
+        groups[(comment(p), p["footprint"], p["lcsc"])].append(p["ref"])
+    with out.open("w", newline="", encoding="utf8") as fh:
+        w = csv.writer(fh)
+        w.writerow(["Comment", "Designator", "Footprint", "LCSC Part #"])
+        for (value, fp, lcsc), refs in sorted(groups.items(),
+                                              key=lambda kv: kv[0][2]):
+            w.writerow([value, ",".join(refs), fp, lcsc])
+    return len(groups), sum(len(r) for r in groups.values())
+
+
+def write_cpl_montaz(parts: list[dict], out: Path) -> int:
+    """Plik pozycji zawezony tak samo jak BOM montazowy.
+
+    Musi zgadzac sie z nim CO DO SZTUKI - JLCPCB odrzuca zlecenie, w
+    ktorym pozycja wystepuje w jednym pliku, a w drugim nie.
+    """
+    n = 0
+    with out.open("w", newline="", encoding="utf8") as fh:
+        w = csv.writer(fh)
+        w.writerow(["Designator", "Mid X", "Mid Y", "Layer", "Rotation"])
+        for p in parts:
+            if not do_montazu(p):
+                continue
+            w.writerow([p["ref"], f"{p['x']:.4f}mm", f"{-p['y']:.4f}mm",
+                        "bottom" if p["bottom"] else "top", f"{p['rot']:.2f}"])
+            n += 1
+    return n
+
+
 def main() -> None:
     ap = argparse.ArgumentParser(description=__doc__)
     ap.add_argument("--out", default=None)
@@ -258,15 +338,26 @@ def main() -> None:
         "-o", str(out / "plytka.step"), str(PCB))
 
     parts = board_parts(board)
-    kinds, placed = write_bom(parts, out / "bom_jlcpcb.csv")
-    cpl = write_cpl(parts, out / "cpl_jlcpcb.csv")
+    # Pelny BOM: WSZYSTKO z numerem LCSC, takze to, co lutujemy sami.
+    # To jest lista zakupow - czesci kupuje sie w jednym zamowieniu,
+    # niezaleznie od tego, kto je pozniej przylutuje.
+    kinds, placed = write_bom(parts, out / "bom_zakupy.csv")
+    cpl = write_cpl(parts, out / "cpl_wszystko.csv")
+    # Zawezone do tego, co JLCPCB ma zmontowac. Oba pliki musza byc
+    # zgodne co do sztuki - patrz `write_cpl_montaz`.
+    m_kinds, m_placed = write_bom_montaz(parts, out / "bom_montaz_jlc.csv")
+    m_cpl = write_cpl_montaz(parts, out / "cpl_montaz_jlc.csv")
     manual = write_manual(parts, out / "montaz_recznie.csv")
 
     print(f"gerbery       {n_gerber} plikow -> gerbers.zip")
     for z in przemianowane:
         print(f"              {z}")
-    print(f"BOM           {kinds} pozycji, {placed} sztuk do montazu")
-    print(f"pozycje       {cpl} elementow")
+    print(f"BOM zakupow   {kinds} pozycji, {placed} sztuk (wszystko z LCSC)")
+    print(f"montaz JLC    {m_kinds} pozycji, {m_placed} sztuk "
+          f"(leadless + FL1 + kwarce)")
+    print(f"              pozycje: {m_cpl} elementow "
+          f"{'ZGODNE z BOM-em' if m_cpl == m_placed else 'NIEZGODNE - SPRAWDZ'}")
+    print(f"pozycje (all) {cpl} elementow")
     print(f"recznie       {manual} elementow bez numeru LCSC")
     print(f"razem na plytce: {len(parts)} elementow")
     print(f"\nwszystko w {out.relative_to(PROJECT)}")

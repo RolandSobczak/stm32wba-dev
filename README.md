@@ -471,14 +471,37 @@ je i stawia przelotki.
 
 Powstaje w `build/fab-dev/`:
 
-| plik | co to |
-|---|---|
-| `gerbers.zip` | 16 plików: sześć warstw miedzi, pasty, sitodruki, maski, obrys, PTH + NPTH |
-| `bom_jlcpcb.csv` | 39 pozycji, 77 sztuk do montażu |
-| `cpl_jlcpcb.csv` | pozycje 77 elementów |
-| `montaz_recznie.csv` | 7 elementów bez numeru LCSC — listwy, złącze SWD, pady pomiarowe |
-| `plytka.pdf` | warstwy miedzi i opisu do obejrzenia |
-| `plytka.step` | model 3D do mechaniki |
+| plik | co to | wgrywać do JLC? |
+|---|---|---|
+| `gerbers.zip` | 16 plików: sześć warstw miedzi, pasty, sitodruki, maski, obrys, PTH + NPTH | **tak** |
+| `bom_montaz_jlc.csv` | 9 pozycji — to, czego nie da się polutować grotem | **tak**, przy montażu |
+| `cpl_montaz_jlc.csv` | pozycje tych samych 9 części | **tak**, przy montażu |
+| `bom_zakupy.csv` | 39 pozycji, 77 sztuk — **wszystko z numerem LCSC**, z ilościami i kolumną `Montaz` | nie, to lista zakupów |
+| `cpl_wszystko.csv` | pozycje wszystkich 77 części | nie, zapasowo |
+| `montaz_recznie.csv` | 7 części bez numeru LCSC — listwy, złącze SWD, pady pomiarowe | nie |
+| `plytka.pdf` / `plytka.step` | podgląd warstw i model 3D | nie |
+
+### Co idzie do montażu, a co pod grot
+
+JLCPCB montuje **tylko obudowy leadless** (QFN, SON, DFN, LGA) plus `FL1`
+i oba kwarce — razem dziewięć sztuk:
+
+```
+U1  VQFN-48   STM32WB55      U7  QFN-16      TCA6408A
+U3  VSON-14   TPS63020       FL1 FILTER-SMD  MLPF-WB55-01E3
+U4  QFN-24    BQ25896        X1  CRYSTAL 2,0 x 1,6 mm
+U5  SON-12    BQ27441        X2  CRYSTAL 3,2 x 1,5 mm
+U6  LGA-8     SD NAND
+```
+
+Te obudowy nie mają nóżek — pady są pod spodem i bez szablonu z pastą nie
+ma do nich dostępu, a pod procesorem siedzi jeszcze pad termiczny z 22
+przelotkami. `FL1` ma sześć padów w rastrze 0,50 mm na obudowie
+1,6 × 1,0 mm i leży w torze RF, gdzie zimny lut objawia się brakiem
+zasięgu, a nie błędem. Źle przylutowany kwarc nie startuje wcale.
+
+Reszta — 30 pozycji, 68 sztuk — idzie ręcznie. Przy 0603 i większych to
+kwadrans roboty, a każda pozycja w montażu to osobna opłata za podajnik.
 
 **Przemianowanie warstw wewnętrznych nie jest kosmetyką.** `kicad-cli` nazywa
 gerber nazwą *użytkownika* warstwy, a nasze nazywają się `GND` i `PWR` — fab
