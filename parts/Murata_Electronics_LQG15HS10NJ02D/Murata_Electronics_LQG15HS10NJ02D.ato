@@ -8,7 +8,7 @@ component Murata_Electronics_LQG15HS10NJ02D_package:
 
     # This trait marks this file as auto-generated
     # If you want to manually change it, remove the trait
-    trait is_auto_generated<system="ato_part", source="easyeda:C77103", date="2026-10-16T10:48:41.905558+00:00", checksum="7d58c86632da204a4c7d2d63c855db0155880a84ae8fb768a5a06d05ca43e452">
+    trait is_auto_generated<system="ato_part", source="easyeda:C77103", date="2026-10-17T16:12:50.763092+00:00", checksum="29c31a6b1f3243f7c8a86f7ae30dbaf3c137ada322e8589e9627be6521d0a00e">
 
     trait is_atomic_part<manufacturer="Murata Electronics", partnumber="LQG15HS10NJ02D", footprint="L0402-RD.kicad_mod", symbol="LQG15HS10NJ02D.kicad_sym", model="L0402-RD.step">
     trait has_part_picked::by_supplier<supplier_id="lcsc", supplier_partno="C77103", manufacturer="Murata Electronics", partno="LQG15HS10NJ02D">

@@ -4,11 +4,11 @@
 	(generator_version "v5")
 	(layer "F.Cu")
 	(tedit "5DC5F6A4")
-	(uuid "b3cddcef-1aa1-48da-82c0-76c3ba92c0d6")
+	(uuid "aa0c8cb7-b1ff-49b6-970b-07be4c27fb96")
 	(property "Reference" "REF**"
 		(at 0 -4)
 		(layer "F.SilkS")
-		(uuid "4df8c339-b0e6-48c5-b2e5-f29d69851590")
+		(uuid "b6e4f9ad-5cd0-4960-88a6-984a65bc0421")
 		(effects
 			(font
 				(size 1 1)
@@ -19,7 +19,7 @@
 	(property "Value" "IND-SMD_L2.5-W2.0"
 		(at 0 4)
 		(layer "F.Fab")
-		(uuid "ec1f5db3-c0cf-4833-ba98-3759aa31f932")
+		(uuid "0af6e947-37d6-4b2e-98e3-287917700734")
 		(effects
 			(font
 				(size 1 1)
@@ -37,7 +37,7 @@
 		)
 		(layer "F.Fab")
 		(locked no)
-		(uuid "d34af586-222a-4f7b-bf2b-caf1935bd0c0")
+		(uuid "fbacb6f4-0af1-43a0-baa8-a13efdd3530c")
 	)
 	(fp_line
 		(start -0.2 1.02)
@@ -49,7 +49,7 @@
 		(layer "F.SilkS")
 		(layers "F.SilkS")
 		(locked no)
-		(uuid "2a974d2f-8570-4dae-95c1-f3d034cc5639")
+		(uuid "8919568c-7108-42e9-a5f4-1ead5a970cff")
 	)
 	(fp_line
 		(start 0.2 -1.02)
@@ -61,19 +61,19 @@
 		(layer "F.SilkS")
 		(layers "F.SilkS")
 		(locked no)
-		(uuid "3f3c03d0-c9f5-4a2e-bb2c-7239bb844227")
+		(uuid "d8ac4e2e-6754-47f5-ba58-50b304a30bcc")
 	)
 	(pad "1" smd rect
 		(at 1.03 0 0)
 		(size 1.2 2.2)
 		(layers "F.Cu" "F.Paste" "F.Mask")
-		(uuid "0708eedf-8b63-433c-9c28-a9c76df50fa2")
+		(uuid "35351bb7-08af-43f0-bf3c-a67f39bc1aac")
 	)
 	(pad "2" smd rect
 		(at -1.03 0 0)
 		(size 1.2 2.2)
 		(layers "F.Cu" "F.Paste" "F.Mask")
-		(uuid "867865f0-2f40-4a5d-99c8-7344bca64083")
+		(uuid "1b8d095a-476c-40f1-9d65-96d4b5e739b7")
 	)
 	(model "${KIPRJMOD}/../../parts/cjiang_SPM2512_1R0MA/IND-SMD_L2.5-W2.0-H1.2.step"
 		(offset

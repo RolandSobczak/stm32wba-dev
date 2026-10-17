@@ -6,7 +6,7 @@ import is_auto_generated
 component cjiang_SPM2512_1R0MA_package:
     # This trait marks this file as auto-generated
     # If you want to manually change it, remove the trait
-    trait is_auto_generated<system="ato_part", source="easyeda:C7471163", date="2026-10-16T10:48:47.632326+00:00", checksum="cc01d6ca4f2fa7829519415dac901e062c784d7169306d01b22b8843c22e2ae7">
+    trait is_auto_generated<system="ato_part", source="easyeda:C7471163", date="2026-10-17T16:12:56.690132+00:00", checksum="9ba37f4125edec219cf0d55640df21c72b01846ab6ae020bde288b610cf1f5d9">
 
     trait is_atomic_part<manufacturer="cjiang", partnumber="SPM2512-1R0MA", footprint="IND-SMD_L2.5-W2.0.kicad_mod", symbol="SPM2512-1R0MA.kicad_sym", model="IND-SMD_L2.5-W2.0-H1.2.step">
     trait has_part_picked::by_supplier<supplier_id="lcsc", supplier_partno="C7471163", manufacturer="cjiang", partno="SPM2512-1R0MA">

@@ -4,11 +4,11 @@
 	(generator_version "v5")
 	(layer "F.Cu")
 	(tedit "5DC5F6A4")
-	(uuid "0af0c098-2693-4418-861f-440615becc64")
+	(uuid "474d5971-89e6-4fe4-8696-80fd732bfb30")
 	(property "Reference" "REF**"
 		(at 0 -4)
 		(layer "F.SilkS")
-		(uuid "bf0a8bae-628a-4108-a18d-826ab901e8bc")
+		(uuid "f53b0ad2-9366-4a60-ae26-59f9e5c6996a")
 		(effects
 			(font
 				(size 1 1)
@@ -19,7 +19,7 @@
 	(property "Value" "C0603"
 		(at 0 4)
 		(layer "F.Fab")
-		(uuid "2d81e3ba-b2d7-44d0-a109-3104cd2f9f64")
+		(uuid "3046c01f-74bc-422e-88fd-1dd5c404707f")
 		(effects
 			(font
 				(size 1 1)
@@ -37,7 +37,7 @@
 		)
 		(layer "F.Fab")
 		(locked no)
-		(uuid "b3e3f048-bf67-41e3-9685-2dfc8e813e03")
+		(uuid "b8170706-9530-4ee8-b557-9d55ea752bfa")
 	)
 	(fp_line
 		(start -0.28 0.71)
@@ -49,7 +49,7 @@
 		(layer "F.SilkS")
 		(layers "F.SilkS")
 		(locked no)
-		(uuid "70058872-cd6e-40d8-94fb-55bdac2615e2")
+		(uuid "5e96cb8e-a57c-406e-b577-e5942d9a68c8")
 	)
 	(fp_line
 		(start 0.28 0.71)
@@ -61,7 +61,7 @@
 		(layer "F.SilkS")
 		(layers "F.SilkS")
 		(locked no)
-		(uuid "ad9f4089-63fc-401b-8817-c2a6a0ba3656")
+		(uuid "95bb34aa-3c10-404f-992f-0a4a7cb23640")
 	)
 	(fp_line
 		(start -0.28 -0.71)
@@ -73,7 +73,7 @@
 		(layer "F.SilkS")
 		(layers "F.SilkS")
 		(locked no)
-		(uuid "ca7296b2-8b0f-4e65-a6fc-f0c0252dd762")
+		(uuid "64a05f5b-0e34-4566-8064-2d6d17851ed1")
 	)
 	(fp_line
 		(start 0.28 -0.71)
@@ -85,7 +85,7 @@
 		(layer "F.SilkS")
 		(layers "F.SilkS")
 		(locked no)
-		(uuid "570d9995-d7b9-44ec-900e-f9b41da8d855")
+		(uuid "7cf1a4b8-85a3-45db-963f-c150a71cd77c")
 	)
 	(fp_line
 		(start -1.39 0.4)
@@ -97,7 +97,7 @@
 		(layer "F.SilkS")
 		(layers "F.SilkS")
 		(locked no)
-		(uuid "32dd5fd2-c308-4b34-ba8d-d6aafeb1ad64")
+		(uuid "2781341c-3ee4-416d-9508-aede602b43b4")
 	)
 	(fp_line
 		(start 1.39 -0.4)
@@ -109,7 +109,7 @@
 		(layer "F.SilkS")
 		(layers "F.SilkS")
 		(locked no)
-		(uuid "1232be71-ed49-40e9-9b77-43764de2e429")
+		(uuid "d787598a-d9a9-4532-802b-0dc4ecf8b012")
 	)
 	(fp_arc
 		(start 1.39 -0.4)
@@ -121,7 +121,7 @@
 		)
 		(layer "F.SilkS")
 		(locked no)
-		(uuid "6c08c9d1-8199-47df-a08b-59da243da9d1")
+		(uuid "e053b736-534c-40e6-92a2-f847810a2bb6")
 	)
 	(fp_arc
 		(start 1.08 0.71)
@@ -133,7 +133,7 @@
 		)
 		(layer "F.SilkS")
 		(locked no)
-		(uuid "f8b8570f-b8fe-4261-8421-446f81bf60d1")
+		(uuid "9d362257-2dff-4d5e-b0a6-41f74a0f26c4")
 	)
 	(fp_arc
 		(start -1.39 0.4)
@@ -145,7 +145,7 @@
 		)
 		(layer "F.SilkS")
 		(locked no)
-		(uuid "1311589f-1ac2-4535-bdb0-f83f5558d7ee")
+		(uuid "ad3d1d4a-548e-46ce-9bf7-7a15a6294518")
 	)
 	(fp_arc
 		(start -1.08 -0.71)
@@ -157,19 +157,19 @@
 		)
 		(layer "F.SilkS")
 		(locked no)
-		(uuid "7c75bc3b-b318-4b71-9886-84fcee61616d")
+		(uuid "5ebd0b1d-0181-4629-b123-8ccee21724bd")
 	)
 	(pad "2" smd rect
 		(at 0.7 0 0)
 		(size 0.8 0.9)
 		(layers "F.Cu" "F.Paste" "F.Mask")
-		(uuid "7e0f1516-bf06-4068-ba08-804934aad873")
+		(uuid "df3bb5b9-a3c9-441e-9a60-7a57959f081b")
 	)
 	(pad "1" smd rect
 		(at -0.7 0 0)
 		(size 0.8 0.9)
 		(layers "F.Cu" "F.Paste" "F.Mask")
-		(uuid "61efad35-156c-4a36-a9f7-5a61ffa8e7c0")
+		(uuid "4d52cd4c-2c88-44aa-8b79-785d97a146fc")
 	)
 	(model "${KIPRJMOD}/../../parts/YAGEO_CC0603KRX7R9BB104/C0603_L1.6-W0.8-H0.8.step"
 		(offset

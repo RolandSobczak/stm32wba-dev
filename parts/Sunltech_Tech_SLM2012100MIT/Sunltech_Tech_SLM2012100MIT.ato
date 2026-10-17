@@ -6,7 +6,7 @@ import is_auto_generated
 component Sunltech_Tech_SLM2012100MIT_package:
     # This trait marks this file as auto-generated
     # If you want to manually change it, remove the trait
-    trait is_auto_generated<system="ato_part", source="easyeda:C2831365", date="2026-10-16T10:48:42.634195+00:00", checksum="b7a5f97550d483ccfcabe5df7b95360f6d935b06bc1e54e746ce92a85bae341d">
+    trait is_auto_generated<system="ato_part", source="easyeda:C2831365", date="2026-10-17T16:12:51.265398+00:00", checksum="95b38eddf9708ea4265a9daa4a6b4dfab2a861bc7dbb27e89217c35c49ee3cde">
 
     trait is_atomic_part<manufacturer="Sunltech Tech", partnumber="SLM2012100MIT", footprint="L0805.kicad_mod", symbol="SLM2012100MIT.kicad_sym", model="R0805_L2.0-W1.3-H0.6.step">
     trait has_part_picked::by_supplier<supplier_id="lcsc", supplier_partno="C2831365", manufacturer="Sunltech Tech", partno="SLM2012100MIT">

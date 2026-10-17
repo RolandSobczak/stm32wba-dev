@@ -6,7 +6,7 @@ import is_auto_generated
 component YAGEO_RC0603FR_0710KL_package:
     # This trait marks this file as auto-generated
     # If you want to manually change it, remove the trait
-    trait is_auto_generated<system="ato_part", source="easyeda:C98220", date="2026-10-16T10:48:37.207355+00:00", checksum="874aa275dfa18735676f865b76c9e8f0d5fd0a382561bb2f4a9e3d2dc98fb6ca">
+    trait is_auto_generated<system="ato_part", source="easyeda:C98220", date="2026-10-17T16:12:45.956039+00:00", checksum="b2e3d29e09db36a996dadc8b48e685dbe31a6575e849f4797869481922500def">
 
     trait is_atomic_part<manufacturer="YAGEO", partnumber="RC0603FR-0710KL", footprint="R0603.kicad_mod", symbol="RC0603FR-0710KL.kicad_sym", model="R0603.STEP">
     trait has_part_picked::by_supplier<supplier_id="lcsc", supplier_partno="C98220", manufacturer="YAGEO", partno="RC0603FR-0710KL">

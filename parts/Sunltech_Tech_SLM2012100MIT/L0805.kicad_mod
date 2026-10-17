@@ -4,11 +4,11 @@
 	(generator_version "v5")
 	(layer "F.Cu")
 	(tedit "5DC5F6A4")
-	(uuid "aa249ead-765e-4f57-921d-f6f755d22fcf")
+	(uuid "38970318-f887-449f-a528-3882d8590ce0")
 	(property "Reference" "REF**"
 		(at 0 -4)
 		(layer "F.SilkS")
-		(uuid "fe87c5f6-b07f-4c3c-ab18-8a1d0f91a612")
+		(uuid "24a9973f-4453-4488-8890-2508c7ea1a2b")
 		(effects
 			(font
 				(size 1 1)
@@ -19,7 +19,7 @@
 	(property "Value" "L0805"
 		(at 0 4)
 		(layer "F.Fab")
-		(uuid "ed657eab-4bad-4f2c-8230-162287c574a6")
+		(uuid "a505e833-a3a4-48b3-a1b5-49148b950b1a")
 		(effects
 			(font
 				(size 1 1)
@@ -37,7 +37,7 @@
 		)
 		(layer "F.Fab")
 		(locked no)
-		(uuid "222f4267-7077-4278-bdaf-1839847c7093")
+		(uuid "7faead7c-89a1-46aa-b493-c160b1a03cca")
 	)
 	(fp_line
 		(start -0.42 -1.02)
@@ -49,7 +49,7 @@
 		(layer "F.SilkS")
 		(layers "F.SilkS")
 		(locked no)
-		(uuid "1c4305ea-ec92-42dd-8f44-35ad27a7d71b")
+		(uuid "e2c64414-e54f-4e7b-963e-1eeb5aff08e6")
 	)
 	(fp_line
 		(start -1.56 -1.02)
@@ -61,7 +61,7 @@
 		(layer "F.SilkS")
 		(layers "F.SilkS")
 		(locked no)
-		(uuid "0b31f557-5667-4cad-815e-54d29f3dc9ba")
+		(uuid "c5416109-940f-41b4-8235-0cd518d610af")
 	)
 	(fp_line
 		(start -1.69 -1.02)
@@ -73,7 +73,7 @@
 		(layer "F.SilkS")
 		(layers "F.SilkS")
 		(locked no)
-		(uuid "f769a2c9-2573-4f54-8d53-7ea2076acc01")
+		(uuid "b042a983-643c-488e-9714-70644bceb4f5")
 	)
 	(fp_line
 		(start -1.94 -0.76)
@@ -85,7 +85,7 @@
 		(layer "F.SilkS")
 		(layers "F.SilkS")
 		(locked no)
-		(uuid "ddc634cd-45d9-4377-9191-4314e1f6ac1a")
+		(uuid "9c9715af-5e00-475b-9316-72f40f884fdb")
 	)
 	(fp_line
 		(start -1.94 0.64)
@@ -97,7 +97,7 @@
 		(layer "F.SilkS")
 		(layers "F.SilkS")
 		(locked no)
-		(uuid "85f76241-a264-4e0d-b5f8-b693463aff55")
+		(uuid "ce559770-6642-4bb1-bc04-b4b894fe6be3")
 	)
 	(fp_line
 		(start -1.94 0.76)
@@ -109,7 +109,7 @@
 		(layer "F.SilkS")
 		(layers "F.SilkS")
 		(locked no)
-		(uuid "97f58109-9de0-40b1-9e3a-4f6eb16b5346")
+		(uuid "d9b588c8-6c6f-4ccb-9851-fe800ce9be3c")
 	)
 	(fp_line
 		(start -1.69 1.02)
@@ -121,7 +121,7 @@
 		(layer "F.SilkS")
 		(layers "F.SilkS")
 		(locked no)
-		(uuid "e6623d67-ae88-4094-81c2-d83bfced48f9")
+		(uuid "6f8b5c93-011b-4cb0-b461-3eb7c5d6245d")
 	)
 	(fp_line
 		(start 0.34 1.02)
@@ -133,7 +133,7 @@
 		(layer "F.SilkS")
 		(layers "F.SilkS")
 		(locked no)
-		(uuid "36bb69eb-e10a-4a2b-9309-7e058e92feb8")
+		(uuid "31ca50a0-dca4-451a-8302-b66a6f3ffd28")
 	)
 	(fp_line
 		(start 1.48 1.02)
@@ -145,7 +145,7 @@
 		(layer "F.SilkS")
 		(layers "F.SilkS")
 		(locked no)
-		(uuid "3f2ca467-c026-422f-a4c5-15c86a480b2c")
+		(uuid "85cd6b7a-5f1b-47f4-a0a2-0a0049b3c88c")
 	)
 	(fp_line
 		(start 1.61 1.02)
@@ -157,7 +157,7 @@
 		(layer "F.SilkS")
 		(layers "F.SilkS")
 		(locked no)
-		(uuid "9200aa8c-5766-470f-9bb1-deb6693f7c2d")
+		(uuid "a0e60a23-3562-4088-a2a7-d03a549f86ff")
 	)
 	(fp_line
 		(start 1.87 0.76)
@@ -169,7 +169,7 @@
 		(layer "F.SilkS")
 		(layers "F.SilkS")
 		(locked no)
-		(uuid "867e705d-a754-4235-8240-6ba631bf1c0d")
+		(uuid "2b5993af-d09d-4294-b129-b09526934917")
 	)
 	(fp_line
 		(start 1.87 -0.63)
@@ -181,7 +181,7 @@
 		(layer "F.SilkS")
 		(layers "F.SilkS")
 		(locked no)
-		(uuid "e0bd2027-ef4a-4f06-a9ee-ecc8f966ea81")
+		(uuid "360bc4be-d6f5-4775-9c3a-20cdf05372c3")
 	)
 	(fp_line
 		(start 1.87 -0.76)
@@ -193,7 +193,7 @@
 		(layer "F.SilkS")
 		(layers "F.SilkS")
 		(locked no)
-		(uuid "ee9a4dbb-480f-40df-aa1d-221fe0e25dd5")
+		(uuid "c04e4e6f-e72d-439e-a5a6-7fbc9bf07735")
 	)
 	(fp_line
 		(start 1.61 -1.02)
@@ -205,19 +205,19 @@
 		(layer "F.SilkS")
 		(layers "F.SilkS")
 		(locked no)
-		(uuid "45ca2421-04fd-45cc-bcf8-c7e8f3ded945")
+		(uuid "678f1255-cee1-4078-8e36-382e5da0bca9")
 	)
 	(pad "1" smd rect
 		(at -0.97 0 0)
 		(size 1.13 1.38)
 		(layers "F.Cu" "F.Paste" "F.Mask")
-		(uuid "24d12f51-840f-44bf-9383-49d5f3f3007a")
+		(uuid "6d4ca483-3a9a-4e83-97d5-345c9b789912")
 	)
 	(pad "2" smd rect
 		(at 0.97 0 0)
 		(size 1.13 1.38)
 		(layers "F.Cu" "F.Paste" "F.Mask")
-		(uuid "ba1e69b3-67a9-4eec-8648-478f08302381")
+		(uuid "255df655-c9b2-4e65-90be-131a18f9c76f")
 	)
 	(model "${KIPRJMOD}/../../parts/Sunltech_Tech_SLM2012100MIT/R0805_L2.0-W1.3-H0.6.step"
 		(offset

@@ -6,7 +6,7 @@ import is_auto_generated
 component PANASONIC_ERJ3RBD3002V_package:
     # This trait marks this file as auto-generated
     # If you want to manually change it, remove the trait
-    trait is_auto_generated<system="ato_part", source="easyeda:C191779", date="2026-10-16T10:48:48.089581+00:00", checksum="2161504146995bd8879363cbac0f40d5607391594379e5d2d4d60f55441bf0d9">
+    trait is_auto_generated<system="ato_part", source="easyeda:C191779", date="2026-10-17T16:12:57.275929+00:00", checksum="0fc5d0df60272c79337c0af54f4a87bedca1170663b226be7778781a6690020b">
 
     trait is_atomic_part<manufacturer="PANASONIC", partnumber="ERJ3RBD3002V", footprint="R0603.kicad_mod", symbol="ERJ-3RBD3002V.kicad_sym", model="R0603.STEP">
     trait has_part_picked::by_supplier<supplier_id="lcsc", supplier_partno="C191779", manufacturer="PANASONIC", partno="ERJ3RBD3002V">
