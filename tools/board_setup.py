@@ -120,6 +120,20 @@ MOUNT_KEEPOUT_D_MM = 7.0   # lebek i podkladka M3
 #   w dol           do krawedzi plaszczyzny, czyli L6 - D4 pod paskiem
 # Dwie wiezyczki schodza 0,5 mm (D4) PONIZEJ tej strefy i tam juz masa byc
 # ma - tam laduje przelotka zwierajaca i tam dochodzi tor 50 om.
+# Sitodruk: minimum JLCPCB, bez zapasu w gore.
+#
+# Producent podaje jako absolutne minimum **0,8 mm wysokosci znaku i 0,15 mm
+# szerokosci kreski**; zaleca 1,0 / 0,2. Bierzemy minimum swiadomie, bo
+# plytka jest ciasna i kazdy napis o 20% mniejszy to mniej nachodzenia na
+# sasiadow - a oznaczenia czyta sie z lupa przy lutowaniu, nie z metra.
+#
+# Ponizej 0,15 mm kreski JLCPCB i tak **pogrubia ja sam** do 0,15. Przy
+# znaku wysokim na 0,5 mm (tyle mialo 25 oznaczen na tej plytce) daje to
+# nieczytelna plame zamiast liter: proporcja szerokosci do wysokosci
+# robi sie 1:3 zamiast zalecanego 1:6.
+SILK_TEXT_H_MM = 0.80
+SILK_TEXT_W_MM = 0.15
+
 ANTENA_FP = "Antenna_IFA_2G4"
 ANTENA_KEEPOUT_MM = (-3.05, -5.45, 12.15, -0.25)   # x1, y1, x2, y2 od srodka
 
@@ -821,6 +835,61 @@ def stitch_thermal_pads(board: pcbnew.BOARD) -> list:
     return wynik, len(stare)
 
 
+def ustaw_sitodruk(board: pcbnew.BOARD) -> tuple[int, int]:
+    """Sprowadza wszystkie oznaczenia na sitodruku do jednego rozmiaru.
+
+    Napisy przychodza z footprintow, a te pochodza z roznych zrodel -
+    EasyEDA, biblioteka KiCada, pliki pisane tutaj - i kazde ma wlasne
+    zwyczaje. Na tej plytce dawalo to cztery rozmiary naraz, od
+    0,50 x 0,062 mm (ponizej tego, co JLCPCB umie wydrukowac) po
+    1,27 x 0,254.
+
+    Musi to robic skrypt, a nie reka: `ato build` odtwarza footprinty
+    z bibliotek i kazda reczna zmiana rozmiaru znika przy przebudowie.
+
+    Pogrubienia nie wlaczamy - minimum to minimum.
+    """
+    silk = (pcbnew.F_SilkS, pcbnew.B_SilkS)
+    h, w = mm(SILK_TEXT_H_MM), mm(SILK_TEXT_W_MM)
+    zmienione = 0
+    wszystkie = 0
+    for fp in board.GetFootprints():
+        for t in (fp.Reference(), fp.Value()):
+            if t.GetLayer() not in silk:
+                continue
+            wszystkie += 1
+            if (t.GetTextHeight() == h and t.GetTextWidth() == h
+                    and t.GetTextThickness() == w and not t.IsBold()):
+                continue
+            t.SetTextHeight(h)
+            t.SetTextWidth(h)
+            t.SetTextThickness(w)
+            t.SetBold(False)
+            zmienione += 1
+
+    # Napisy wlasne, dopisane w KiCadzie - na tej plytce mapa pinow listew
+    # (`+3V3`, `GND`, `SCL`, `PA2`, `RST`, `BOOT0`, `LD1`...). Tych NIE
+    # zmniejszamy: ktos dobral im wysokosc 1,0 mm swiadomie, a to one sa
+    # czytane przy wpinaniu przewodu, nie oznaczenia elementow.
+    #
+    # Poprawiamy im wylacznie grubosc kreski, bo 0,100 mm jest ponizej
+    # tego, co JLCPCB drukuje - producent pogrubilby ja i tak do 0,15,
+    # tyle ze bez pytania i bez zachowania proporcji znaku.
+    for d in board.GetDrawings():
+        if d.GetClass() not in ("PCB_TEXT", "PCB_TEXTBOX"):
+            continue
+        if d.GetLayer() not in silk:
+            continue
+        wszystkie += 1
+        if d.GetTextThickness() >= w and not d.IsBold():
+            continue
+        d.SetTextThickness(w)
+        d.SetBold(False)
+        zmienione += 1
+
+    return zmienione, wszystkie
+
+
 def przelotka_zwierajaca(board: pcbnew.BOARD) -> tuple | None:
     """Stawia przelotke zwierajaca radiator anteny do plaszczyzny masy.
 
@@ -1506,6 +1575,12 @@ def set_rules(board: pcbnew.BOARD) -> None:
     Gdyby ktos narysowal cieniej, DRC powie o tym ZANIM zobaczy to wycena.
     """
     ds = board.GetDesignSettings()
+    # Progi sitodruku rowne minimum JLCPCB, zeby DRC sprawdzalo to, co
+    # producent naprawde umie wydrukowac. Domyslne 0,08 mm grubosci kreski
+    # jest ponizej jego mozliwosci - przepuszczalo napisy, ktore JLCPCB
+    # i tak musialby pogrubic, psujac proporcje znaku.
+    ds.m_MinSilkTextHeight = mm(SILK_TEXT_H_MM)
+    ds.m_MinSilkTextThickness = mm(SILK_TEXT_W_MM)
     ds.m_MinClearance = mm(CLEARANCE_MM)
     ds.m_TrackMinWidth = mm(TRACK_MM)
     ds.m_ViasMinSize = mm(min(VIA_DIA_MM, PAD_VIA_DIA_MM))
@@ -1640,6 +1715,7 @@ def main() -> None:
     # PO szyciu: gdyby kiedys pad zwieracza trafil w rodzine szytych
     # obudow, kasowanie starej siatki zabraloby te przelotke razem z nia.
     zwieracz = przelotka_zwierajaca(board)
+    sitodruk = ustaw_sitodruk(board)
     za_cienkie = sprawdz_przelotki(board)
 
     # Wylanie stref MUSI byc po szyciu i przed zapisem. Ten skrypt dodaje
@@ -1685,6 +1761,9 @@ def main() -> None:
     if zwieracz:
         print(f"przelotka zwierajaca anteny: ({zwieracz[0]:.2f}, {zwieracz[1]:.2f})"
               f" - radiator zwarty do plaszczyzny masy")
+    print(f"sitodruk: {sitodruk[0]} z {sitodruk[1]} napisow poprawione - "
+          f"oznaczenia na {SILK_TEXT_H_MM} x {SILK_TEXT_W_MM} mm, napisy wlasne "
+          f"tylko na kresce {SILK_TEXT_W_MM} mm (minimum JLCPCB)")
     print(f"obrys zamkniety: {ksztaltow} ksztaltow, kazdy wierzcholek laczy dwa")
     if not za_cienkie:
         print(f"wszystkie przelotki maja wiertlo >= "

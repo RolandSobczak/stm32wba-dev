@@ -383,6 +383,14 @@ anteny. Skrypt ustawia:
   — nigdy nie miała się gdzie zmieścić. Zwarcie radiatora do masy jest całą
   zasadą działania odwróconej F; bez niego to kawałek miedzi o nieokreślonej
   impedancji. Wymiarów samej anteny nie ruszono,
+* **sitodruk sprowadzony do minimum JLCPCB** — producent podaje jako absolutne
+  minimum **0,8 mm wysokości znaku i 0,15 mm szerokości kreski** (zaleca 1,0 / 0,2).
+  Oznaczenia elementów idą na 0,80 × 0,15; napisy własne, czyli mapa pinów listew,
+  zachowują swoją wysokość 1,0 mm i dostają poprawioną samą kreskę — to one są
+  czytane przy wpinaniu przewodu. Poniżej 0,15 mm JLCPCB i tak pogrubia kreskę
+  sam, tyle że bez zachowania proporcji znaku: przy literze wysokiej na 0,5 mm
+  (tyle miało 25 oznaczeń) proporcja robi się 1:3 zamiast zalecanego 1:6
+  i wychodzi plama,
 * **strefę zakazu 15,2 × 5,2 mm pod anteną na wszystkich sześciu warstwach**,
 * **szycie przelotkami pod padami termicznymi** obudów bez nóżek (QFN/SON/DFN)
   leżącymi na masie: `U1` 5×5 = 25 przelotek w padzie 5,50 × 5,50 mm,
