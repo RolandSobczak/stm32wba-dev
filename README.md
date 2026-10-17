@@ -450,6 +450,36 @@ Czego pilnować przy rozmieszczaniu (uzasadnienia w nagłówku `dev.ato`):
 
 Potem DRC na regułach JLCPCB (0,127/0,127, wiertło 0,2).
 
+## Pliki wytwórcze
+
+```bash
+distrobox enter -n atopile -- python3 tools/fabrication.py --board dev
+```
+
+Źródłem jest **plik płytki z repozytorium**, nie przebudowa z atopile — w gicie
+leży to, co faktycznie idzie do produkcji, razem z ręczną miedzią i wylewkami.
+Uruchamiać **po** `tools/board_setup.py`, bo to on nadaje wylewkom sieć, wylewa
+je i stawia przelotki.
+
+Powstaje w `build/fab-dev/`:
+
+| plik | co to |
+|---|---|
+| `gerbers.zip` | 16 plików: sześć warstw miedzi, pasty, sitodruki, maski, obrys, PTH + NPTH |
+| `bom_jlcpcb.csv` | 39 pozycji, 77 sztuk do montażu |
+| `cpl_jlcpcb.csv` | pozycje 77 elementów |
+| `montaz_recznie.csv` | 7 elementów bez numeru LCSC — listwy, złącze SWD, pady pomiarowe |
+| `plytka.pdf` | warstwy miedzi i opisu do obejrzenia |
+| `plytka.step` | model 3D do mechaniki |
+
+**Przemianowanie warstw wewnętrznych nie jest kosmetyką.** `kicad-cli` nazywa
+gerber nazwą *użytkownika* warstwy, a nasze nazywają się `GND` i `PWR` — fab
+takich nie zna. Skrypt zmienia je na `In1_Cu`…`In4_Cu` i przy okazji poprawia
+numerację w pliku zadania: KiCad 9 wpisuje tam swój wewnętrzny identyfikator
+warstwy, przez co `In1_Cu` wychodziło jako `L5` zamiast `L2`. Wierzch i spód
+numeruje poprawnie, więc błędu nie widać, dopóki nie policzy się warstw
+wewnętrznych — a płytka przyszłaby z płaszczyznami nie tam, gdzie trzeba.
+
 ## Zasilanie z USB — co ustala prąd wejściowy
 
 To jest miejsce, w którym najłatwiej szukać peryferialu, którego nie ma, więc
