@@ -370,6 +370,12 @@ anteny. Skrypt ustawia:
   (`USB_D_P`/`USB_D_N` przy procesorze, `USB_CONN_P`/`USB_CONN_N` przy
   gnieździe — przyrostki `_P`/`_N` są warunkiem, żeby KiCad w ogóle
   rozpoznał parę różnicową),
+* **przelotkę zwierającą radiator anteny do płaszczyzny masy** — stawianą
+  w padzie lądowania, wybieranym geometrycznie: musi pomieścić całą
+  przelotkę z odstępem i leżeć **poniżej strefy zakazu**, czyli już
+  w obszarze masy. Pionowy zwieracz też mieści przelotkę (0,90 mm
+  szerokości), ale siedzi w strefie zakazu — przelotka w nim byłaby masą
+  dokładnie tam, gdzie masy być nie może,
 * **pad lądowania 1,10 × 1,10 mm pod zwieraczem anteny** — jedyny prostokąt
   spoza Table 1 noty AN043. Stopa zwieracza z noty ma 0,90 × 0,50 mm, a
   przelotka 0,5 mm z odstępem potrzebuje 0,80 w obu osiach, więc przelotka

@@ -821,6 +821,85 @@ def stitch_thermal_pads(board: pcbnew.BOARD) -> list:
     return wynik, len(stare)
 
 
+def przelotka_zwierajaca(board: pcbnew.BOARD) -> tuple | None:
+    """Stawia przelotke zwierajaca radiator anteny do plaszczyzny masy.
+
+    W antenie typu odwrocone F radiator jest zwarty do masy przez zwieracz
+    i **to jest cala zasada jej dzialania** - bez tego zwarcia zostaje
+    kawalek miedzi o nieokreslonej impedancji. Komentarz przy
+    `ANTENA_KEEPOUT_MM` zaklada te przelotke od poczatku ("tam laduje
+    przelotka zwierajaca"), ale przez dlugi czas jej nie bylo: stopa
+    zwieracza z AN043 ma 0,90 x 0,50 mm, a przelotka z odstepem potrzebuje
+    0,80 mm w obu osiach. Dopiero pad ladowania 1,10 x 1,10 mm dolozony do
+    footprintu dal jej miejsce.
+
+    Pad wybierany jest geometrycznie, nie po wspolrzednych:
+
+      * musi pomiescic CALA przelotke z odstepem,
+      * musi lezec w calosci PONIZEJ strefy zakazu - czyli juz w obszarze
+        masy. Pionowy zwieracz tez przeszedlby pierwszy warunek (0,90 mm
+        szerokosci), ale siedzi w strefie zakazu i przelotka w nim byloby
+        masa dokladnie tam, gdzie masy byc nie moze.
+
+    Zwraca `(x, y)` postawionej przelotki albo `None`.
+    """
+    ant = next((f for f in board.GetFootprints()
+                if ANTENA_FP in str(f.GetFPIDAsString())), None)
+    gnd = board.FindNet("GND")
+    if ant is None or gnd is None:
+        return None
+
+    zasilanie = next((p for p in ant.Pads() if p.GetNetname() == "ANT"), None)
+    if zasilanie is None:
+        return None
+    dol_strefy = zasilanie.GetPosition().y + mm(ANTENA_KEEPOUT_MM[3])
+
+    potrzeba = mm(PAD_VIA_DIA_MM) + 2 * mm(CLEARANCE_MM)
+    promien = mm(PAD_VIA_DIA_MM / 2)
+    kandydat = None
+    for pad in ant.Pads():
+        if pad.GetNetname() != "GND":
+            continue
+        bb = pad.GetBoundingBox()
+        if bb.GetWidth() < potrzeba or bb.GetHeight() < potrzeba:
+            continue
+        if bb.GetTop() < dol_strefy:          # siega w strefe zakazu
+            continue
+        kandydat = pad
+        break
+    if kandydat is None:
+        print("  UWAGA: antena nie ma padu, w ktorym zmiescilaby sie "
+              "przelotka zwierajaca PONIZEJ strefy zakazu")
+        return None
+
+    srodek = kandydat.GetPosition()
+    # Ta sama kontrola, co przy szyciu padow termicznych: przelotka ma
+    # miescic sie cala w miedzi i nie wchodzic w nic obcego.
+    punkty = ((0, 0), (promien, 0), (-promien, 0), (0, promien), (0, -promien))
+    if not all(kandydat.HitTest(
+            pcbnew.VECTOR2I(int(srodek.x + dx), int(srodek.y + dy)), 0)
+            for dx, dy in punkty):
+        print("  UWAGA: srodek padu zwieracza nie miesci calej przelotki")
+        return None
+
+    for t in list(board.GetTracks()):
+        if t.Type() != pcbnew.PCB_VIA_T:
+            continue
+        d = (t.GetPosition().x - srodek.x) ** 2 + (t.GetPosition().y - srodek.y) ** 2
+        if d < (promien * 2) ** 2:
+            return (pcbnew.ToMM(srodek.x), pcbnew.ToMM(srodek.y))   # juz stoi
+
+    v = pcbnew.PCB_VIA(board)
+    v.SetViaType(pcbnew.VIATYPE_THROUGH)
+    v.SetLayerPair(pcbnew.F_Cu, pcbnew.B_Cu)
+    v.SetPosition(srodek)
+    v.SetWidth(pcbnew.F_Cu, mm(PAD_VIA_DIA_MM))
+    v.SetDrill(mm(PAD_VIA_DRILL_MM))
+    v.SetNet(gnd)
+    board.Add(v)
+    return (pcbnew.ToMM(srodek.x), pcbnew.ToMM(srodek.y))
+
+
 def napraw_siec_anteny(board: pcbnew.BOARD) -> int:
     """Oddaje masie te pady anteny, ktorym `ato build` jej nie przypisal.
 
@@ -1558,6 +1637,9 @@ def main() -> None:
     # do miedzi, zeby kasowanie poprzedniej siatki nie kolidowalo
     # z przebudowa wylewek.
     szycie, skasowane = stitch_thermal_pads(board)
+    # PO szyciu: gdyby kiedys pad zwieracza trafil w rodzine szytych
+    # obudow, kasowanie starej siatki zabraloby te przelotke razem z nia.
+    zwieracz = przelotka_zwierajaca(board)
     za_cienkie = sprawdz_przelotki(board)
 
     # Wylanie stref MUSI byc po szyciu i przed zapisem. Ten skrypt dodaje
@@ -1600,6 +1682,9 @@ def main() -> None:
               + (f" (skasowano {skasowane} starych)" if skasowane else ""))
     print(f"wylewki: {'wylane' if wylane else 'NIE UDALO SIE WYLAC'} "
           f"({len([z for z in board.Zones() if not z.GetIsRuleArea()])} stref)")
+    if zwieracz:
+        print(f"przelotka zwierajaca anteny: ({zwieracz[0]:.2f}, {zwieracz[1]:.2f})"
+              f" - radiator zwarty do plaszczyzny masy")
     print(f"obrys zamkniety: {ksztaltow} ksztaltow, kazdy wierzcholek laczy dwa")
     if not za_cienkie:
         print(f"wszystkie przelotki maja wiertlo >= "
