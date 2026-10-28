@@ -56,11 +56,28 @@ component Samtec_SHF_105_01_L_D_RA_package:
     inaczej sonda w ogole jej nie zobaczy - a to jest dokladnie ten objaw,
     ktory przy pierwszym uruchomieniu wyglada jak martwy procesor.
 
-    Czesc kupowana poza LCSC - stad `supplier_partno`, ktore nie zaczyna
-    sie od "C": eksporter pomija ja wtedy w BOM-ie dla montazu.
+    **Jest na LCSC: C17186479.** Wczesniej stal tu tekst zastepczy
+    "SHF-105-01-L-D-RA" z adnotacja "czesc kupowana poza LCSC", przez co
+    eksporter wyrzucal ja do montazu recznego i **nie trafiala do zadnej
+    listy zakupow** - przy zamawianiu trzeba bylo o niej pamietac
+    z glowy. Sprawdzone: katalog ma ja za ok. 2,60 USD.
+
+    Dwie rzeczy do wiedzy przy zamawianiu:
+
+      * **stan jest cienki** (rzad pojedynczych sztuk), wiec przy braku
+        bierz `C17609174` - ten sam `SHF-105-01-L-D-RA-TR`, tylko
+        w tasmie,
+      * `J1`/`J2` i `TP1`-`TP4` zostaja BEZ numeru swiadomie: goldpiny
+        kupuje sie listwa 1x40 i przycina, a pady pomiarowe to gola
+        miedz. Wymuszanie im numeru LCSC kazaloby atopile liczyc jedna
+        listwe na kazde zlacze.
+
+    Montaz zostaje RECZNY niezaleznie od numeru - `do_montazu()`
+    w `tools/fabrication.py` wybiera po obudowie (leadless + kwarce
+    + FL1), a nie po tym, czy czesc ma numer katalogowy.
     """
     trait is_atomic_part<manufacturer="Samtec", partnumber="SHF-105-01-L-D-RA", footprint="CONN-THT_10P-P1.27_SHF-105-01-L-D-RA.kicad_mod", symbol="SHF-105-01-L-D-RA.kicad_sym", model="SHF-105-01-L-D-RA.STEP">
-    trait has_part_picked::by_supplier<supplier_id="lcsc", supplier_partno="SHF-105-01-L-D-RA", manufacturer="Samtec", partno="SHF-105-01-L-D-RA">
+    trait has_part_picked::by_supplier<supplier_id="lcsc", supplier_partno="C17186479", manufacturer="Samtec", partno="SHF-105-01-L-D-RA">
     trait has_designator_prefix<prefix="CN">
 
     # pins
