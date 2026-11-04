@@ -454,7 +454,7 @@ module ChargerBq25896:
     ts_cap = new Capacitor
     ts_cap.capacitance = 100nF +/- 10%
     ts_cap.package = "0603"
-    ts_cap.lcsc_id = "C14663"  # 100nF 50V X7R +/-10% 0603
+    ts_cap.lcsc_id = "C1591"  # 100nF 50V X7R +/-10% 0603, Samsung CL10B104KB8NNNC
     assert ts_cap.max_voltage within 10V to 50V
     net_ts ~> ts_cap ~> power_in.lv
 
@@ -720,7 +720,7 @@ module BuckBoost3V3 from Regulator:
     vina_cap = new Capacitor
     vina_cap.capacitance = 100nF +/- 10%
     vina_cap.package = "0603"
-    vina_cap.lcsc_id = "C14663"  # 100nF 50V X7R +/-10% 0603
+    vina_cap.lcsc_id = "C1591"  # 100nF 50V X7R +/-10% 0603, Samsung CL10B104KB8NNNC
     assert vina_cap.max_voltage within 10V to 50V
     ic.VINA ~> vina_cap ~> power_in.lv
 

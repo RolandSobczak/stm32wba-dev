@@ -103,6 +103,6 @@ module SdNandSpi:
     decoupling = new Capacitor
     decoupling.capacitance = 100nF +/- 10%
     decoupling.package = "0603"
-    decoupling.lcsc_id = "C14663"  # 100nF 50V X7R +/-10% 0603
+    decoupling.lcsc_id = "C1591"  # 100nF 50V X7R +/-10% 0603, Samsung CL10B104KB8NNNC
     assert decoupling.max_voltage within 10V to 50V
     power.hv ~> decoupling ~> power.lv

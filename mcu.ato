@@ -193,7 +193,7 @@ module Stm32Wb55:
     for c in decoupling:
         c.capacitance = 100nF +/- 10%
         c.package = "0603"
-        c.lcsc_id = "C14663"  # 100nF 50V X7R +/-10% 0603
+        c.lcsc_id = "C1591"  # 100nF 50V X7R +/-10% 0603, Samsung CL10B104KB8NNNC
         assert c.max_voltage within 10V to 50V
         power.hv ~> c ~> power.lv
 
@@ -211,7 +211,7 @@ module Stm32Wb55:
     vdda_cap = new Capacitor
     vdda_cap.capacitance = 100nF +/- 10%
     vdda_cap.package = "0603"
-    vdda_cap.lcsc_id = "C14663"  # 100nF 50V X7R +/-10% 0603
+    vdda_cap.lcsc_id = "C1591"  # 100nF 50V X7R +/-10% 0603, Samsung CL10B104KB8NNNC
     assert vdda_cap.max_voltage within 10V to 50V
     ic.VDDA ~> vdda_cap ~> power.lv
 
@@ -225,14 +225,14 @@ module Stm32Wb55:
     vddusb_cap = new Capacitor
     vddusb_cap.capacitance = 100nF +/- 10%
     vddusb_cap.package = "0603"
-    vddusb_cap.lcsc_id = "C14663"  # 100nF 50V X7R +/-10% 0603
+    vddusb_cap.lcsc_id = "C1591"  # 100nF 50V X7R +/-10% 0603, Samsung CL10B104KB8NNNC
     assert vddusb_cap.max_voltage within 10V to 50V
     ic.VDDUSB ~> vddusb_cap ~> power.lv
 
     vbat_cap = new Capacitor
     vbat_cap.capacitance = 100nF +/- 10%
     vbat_cap.package = "0603"
-    vbat_cap.lcsc_id = "C14663"  # 100nF 50V X7R +/-10% 0603
+    vbat_cap.lcsc_id = "C1591"  # 100nF 50V X7R +/-10% 0603, Samsung CL10B104KB8NNNC
     assert vbat_cap.max_voltage within 10V to 50V
     ic.VBAT ~> vbat_cap ~> power.lv
 
@@ -254,7 +254,7 @@ module Stm32Wb55:
     vddrf_cap = new Capacitor
     vddrf_cap.capacitance = 100nF +/- 10%
     vddrf_cap.package = "0603"
-    vddrf_cap.lcsc_id = "C14663"  # 100nF 50V X7R +/-10% 0603
+    vddrf_cap.lcsc_id = "C1591"  # 100nF 50V X7R +/-10% 0603, Samsung CL10B104KB8NNNC
     assert vddrf_cap.max_voltage within 10V to 50V
     ic.VDDRF ~> vddrf_cap ~> power.lv
 
@@ -331,7 +331,7 @@ module Stm32Wb55:
     reset_cap = new Capacitor
     reset_cap.capacitance = 100nF +/- 10%
     reset_cap.package = "0603"
-    reset_cap.lcsc_id = "C14663"  # 100nF 50V X7R +/-10% 0603
+    reset_cap.lcsc_id = "C1591"  # 100nF 50V X7R +/-10% 0603, Samsung CL10B104KB8NNNC
     assert reset_cap.max_voltage within 10V to 50V
     reset.line ~> reset_cap ~> power.lv
 

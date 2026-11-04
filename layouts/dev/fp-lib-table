@@ -329,4 +329,11 @@
 		(options "")
 		(descr "atopile: part lib: Texas_Instruments_TCA6408ARGTR")
 	)
+	(lib
+		(name "Samsung_Electro_Mechanics_CL10B104KB8NNNC")
+		(type "KiCad")
+		(uri "${KIPRJMOD}/../../parts/Samsung_Electro_Mechanics_CL10B104KB8NNNC")
+		(options "")
+		(descr "atopile: part lib: Samsung_Electro_Mechanics_CL10B104KB8NNNC")
+	)
 )

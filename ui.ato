@@ -262,7 +262,7 @@ module IoExpander:
     decoupling = new Capacitor
     decoupling.capacitance = 100nF +/- 10%
     decoupling.package = "0603"
-    decoupling.lcsc_id = "C14663"  # YAGEO CC0603KRX7R9BB104, 100nF X7R 50V
+    decoupling.lcsc_id = "C1591"  # 100nF 50V X7R +/-10% 0603, Samsung CL10B104KB8NNNC
     # Jeden kondensator na obie szyny - `VCCI` i `VCCP` to nozki 15 i 14,
     # czyli sasiednie, a sam uklad bierze 1,5 uA. Dwa osobne odsprzegania
     # mialyby sens, gdyby szyny byly rozne; tu sa ta sama miedzia.
